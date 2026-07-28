@@ -4,9 +4,10 @@
 /// </summary>
 ///
 /// <remarks>
-/// Owns UI (form + Skia paint box + stats footer) and wires the standalone
-/// TGameLoop to TAetherScene. Viewport size is taken only from the paint box
-/// (layout), never invented with footer-height arithmetic on the form.
+/// Owns UI (form + Skia paint box) and wires the standalone TGameLoop to
+/// TAetherScene. The stats footer is drawn as a Skia overlay inside the paint
+/// box so it stays visible under Metal (FMX TLabel/TRectangle can be covered
+/// or fail to composite when GlobalUseSkia + Metal is active).
 /// </remarks>
 ///
 /// <copyright>
@@ -26,14 +27,12 @@ uses
   System.Classes,
   System.Diagnostics,
   System.Math,
+  System.StrUtils,
   // FMX
   FMX.Types,
   FMX.Controls,
-  FMX.Controls.Presentation,
   FMX.Forms,
   FMX.Graphics,
-  FMX.StdCtrls,
-  FMX.Objects,
   // Skia
   System.Skia,
   FMX.Skia,
@@ -67,7 +66,7 @@ type
   end;
 
   /// <summary>
-  /// Main demo window: game loop + scene + paint box + stats footer.
+  /// Main demo window: game loop + scene + Skia paint box (with HUD stats).
   /// </summary>
   TFormMain = class(TForm)
     procedure FormCreate(ASender: TObject);
@@ -77,13 +76,13 @@ type
     procedure FormResize(ASender: TObject);
   private
     FPaintBox: TSkPaintBox;
-    FPanelStats: TRectangle;
-    FLabelStats: TLabel;
     FGameLoop: TGameLoop;
     FScene: TAetherScene;
     FFrameStats: TFrameStats;
+    FStatsText: string;
 
     procedure CreateUi;
+    function GetSceneViewportHeight: Single;
     procedure SyncViewportFromPaintBox;
     procedure EnsureSceneInitialized;
     procedure DoGameUpdate(const ADeltaTime: Double);
@@ -93,6 +92,7 @@ type
       const ACanvas: ISkCanvas;
       const ADest: TRectF;
       const AOpacity: Single);
+    procedure DrawStatsOverlay(const ACanvas: ISkCanvas; const ADest: TRectF);
     procedure UpdateStatsFooter;
   end;
 
@@ -104,10 +104,14 @@ implementation
 {$R *.fmx}
 
 const
-  cStatsPanelHeight = 40;
+  cStatsPanelHeight = 44;
   cStatsRefreshInterval = 0.25;
   cStatsBarColor = $FF0B1220;
   cStatsTextColor = $FFE8EEF8;
+  cStatsFontSize = 12;
+  cStatsTextPadX = 12;
+  cStatsLine1Y = 16;
+  cStatsLine2Y = 34;
   scStatsFormat =
     'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim time: %.1f s' + sLineBreak +
     'Platform: %s  |  Backend: %s';
@@ -126,7 +130,6 @@ begin
   PlatformLabel := '';
   BackendLabel := '';
 end;
-
 
 procedure TFrameStats.CaptureEnvironment;
 begin
@@ -176,35 +179,18 @@ end;
 
 procedure TFormMain.CreateUi;
 begin
-  FPanelStats := TRectangle.Create(Self);
-  FPanelStats.Parent := Self;
-  FPanelStats.Align := TAlignLayout.Bottom;
-  FPanelStats.Height := cStatsPanelHeight;
-  FPanelStats.HitTest := False;
-  FPanelStats.Stroke.Kind := TBrushKind.None;
-  FPanelStats.Fill.Kind := TBrushKind.Solid;
-  FPanelStats.Fill.Color := cStatsBarColor;
-
-  FLabelStats := TLabel.Create(Self);
-  FLabelStats.Parent := FPanelStats;
-  FLabelStats.Align := TAlignLayout.Client;
-  FLabelStats.HitTest := False;
-  FLabelStats.Margins.Left := 12;
-  FLabelStats.Margins.Right := 12;
-  FLabelStats.VertTextAlign := TTextAlign.Center;
-  FLabelStats.StyledSettings := [];
-  FLabelStats.TextSettings.Font.Size := 12;
-  FLabelStats.TextSettings.Font.Style := [TFontStyle.fsBold];
-  FLabelStats.TextSettings.FontColor := cStatsTextColor;
-  FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
-  FLabelStats.WordWrap := True;
-  FLabelStats.Text := 'FPS: -';
-
+  // Full-client Skia surface; stats are drawn as an overlay (Metal-safe)
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := Self;
   FPaintBox.Align := TAlignLayout.Client;
   FPaintBox.HitTest := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
+  FStatsText := 'FPS: -';
+end;
+
+function TFormMain.GetSceneViewportHeight: Single;
+begin
+  Result := Max(1, FPaintBox.Height - cStatsPanelHeight);
 end;
 
 procedure TFormMain.SyncViewportFromPaintBox;
@@ -214,7 +200,7 @@ begin
     Exit;
   end;
 
-  FScene.SetViewport(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+  FScene.SetViewport(Max(1, FPaintBox.Width), GetSceneViewportHeight);
 end;
 
 procedure TFormMain.EnsureSceneInitialized;
@@ -225,7 +211,7 @@ begin
   end
   else
   begin
-    FScene.Initialize(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+    FScene.Initialize(Max(1, FPaintBox.Width), GetSceneViewportHeight);
   end;
 end;
 
@@ -238,7 +224,6 @@ begin
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
   FGameLoop.OnRender := DoGameRender;
-  // Initialize + StartLoop in FormShow (layout size + visibility)
 end;
 
 procedure TFormMain.FormShow(ASender: TObject);
@@ -250,7 +235,6 @@ begin
     FGameLoop.StartLoop;
   end;
 
-  // Backend is registered after GlobalUseSkia + app init
   FFrameStats.CaptureEnvironment;
   UpdateStatsFooter;
 end;
@@ -282,7 +266,6 @@ end;
 
 procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
 begin
-  // Viewport is layout-owned — never re-derived from form height here
   FScene.Update(ADeltaTime);
 
   if FFrameStats.ShouldRefreshFooter(ADeltaTime, cStatsRefreshInterval) then
@@ -299,15 +282,46 @@ end;
 
 procedure TFormMain.UpdateStatsFooter;
 begin
-  if not Assigned(FLabelStats) or not Assigned(FScene) then
+  if not Assigned(FScene) then
   begin
     Exit;
   end;
 
-  FLabelStats.Text := FFrameStats.FormatLine(
+  FStatsText := FFrameStats.FormatLine(
     FScene.ParticleCount,
     FScene.OrbCount,
     FScene.Time);
+end;
+
+procedure TFormMain.DrawStatsOverlay(const ACanvas: ISkCanvas; const ADest: TRectF);
+var
+  LBar: TRectF;
+  LPaint: ISkPaint;
+  LFont: ISkFont;
+  LLines: TArray<string>;
+  LY: Single;
+begin
+  LBar := TRectF.Create(ADest.Left, ADest.Bottom - cStatsPanelHeight, ADest.Right, ADest.Bottom);
+
+  LPaint := TSkPaint.Create;
+  LPaint.AntiAlias := True;
+  LPaint.Color := cStatsBarColor;
+  ACanvas.DrawRect(LBar, LPaint);
+
+  LFont := TSkFont.Create(TSkTypeface.MakeDefault, cStatsFontSize);
+  LPaint.Color := cStatsTextColor;
+
+  LLines := SplitString(FStatsText, sLineBreak);
+  LY := LBar.Top + cStatsLine1Y;
+  if Length(LLines) > 0 then
+  begin
+    ACanvas.DrawSimpleText(LLines[0], LBar.Left + cStatsTextPadX, LY, LFont, LPaint);
+  end;
+  if Length(LLines) > 1 then
+  begin
+    LY := LBar.Top + cStatsLine2Y;
+    ACanvas.DrawSimpleText(LLines[1], LBar.Left + cStatsTextPadX, LY, LFont, LPaint);
+  end;
 end;
 
 procedure TFormMain.DoPaintBoxDraw(
@@ -315,8 +329,14 @@ procedure TFormMain.DoPaintBoxDraw(
   const ACanvas: ISkCanvas;
   const ADest: TRectF;
   const AOpacity: Single);
+var
+  LSceneDest: TRectF;
 begin
-  TAetherSceneRenderer.Draw(FScene, ACanvas, ADest);
+  // Scene in the upper region; stats HUD in the bottom strip (same Metal surface)
+  LSceneDest := ADest;
+  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - cStatsPanelHeight);
+  TAetherSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
+  DrawStatsOverlay(ACanvas, ADest);
 end;
 
 end.
