@@ -4,9 +4,11 @@
 /// </summary>
 ///
 /// <remarks>
-/// Owns UI (form + Skia paint box + stats footer) and wires the standalone
-/// TGameLoop to TAetherScene. Viewport size is taken only from the paint box
-/// (layout), never invented with footer-height arithmetic on the form.
+/// Wires TGameLoop to TAetherScene and a TSkPaintBox. System diagnostics live
+/// in AetherOrbits.SystemInfo; the stats overlay is AetherOrbits.Stats.Hud.
+/// Preferred FPS segment control sets GlobalPreferredFramesPerSecond and
+/// restarts the game loop so Mac/iOS Display Link re-applies the range.
+/// The bar uses dark Skia-matching chrome (rectangles), not light theme panels.
 /// </remarks>
 ///
 /// <copyright>
@@ -24,16 +26,16 @@ uses
   System.Types,
   System.UITypes,
   System.Classes,
-  System.Diagnostics,
   System.Math,
   // FMX
   FMX.Types,
   FMX.Controls,
   FMX.Controls.Presentation,
+  FMX.StdCtrls,
+  FMX.Layouts,
+  FMX.Objects,
   FMX.Forms,
   FMX.Graphics,
-  FMX.StdCtrls,
-  FMX.Objects,
   // Skia
   System.Skia,
   FMX.Skia,
@@ -41,49 +43,46 @@ uses
   AetherOrbits.GameLoop,
   AetherOrbits.Scene,
   AetherOrbits.Scene.Renderer,
-  AetherOrbits.RuntimeInfo;
+  AetherOrbits.Stats.Hud,
+  AetherOrbits.SystemInfo;
 
 type
   /// <summary>
-  /// Rolling FPS / frame-time samples for the stats footer.
-  /// </summary>
-  TFrameStats = record
-    Stopwatch: TStopwatch;
-    FrameCount: Integer;
-    WindowStart: Double;
-    LastRenderTime: Double;
-    Fps: Integer;
-    FrameMs: Double;
-    RefreshTimer: Double;
-    PlatformLabel: string;
-    BackendLabel: string;
-    procedure Reset;
-    procedure CaptureEnvironment;
-    procedure OnFrameRendered;
-    function ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
-    function FormatLine(
-      const AParticleCount, AOrbCount: Integer;
-      const ASimTime: Double): string;
-  end;
-
-  /// <summary>
-  /// Main demo window: game loop + scene + paint box + stats footer.
+  /// Main demo window: game loop + scene + Skia paint box + stats HUD.
   /// </summary>
   TFormMain = class(TForm)
+    LayoutPreferred: TLayout;
+    RectPreferredBg: TRectangle;
+    RectPreferredBottomLine: TRectangle;
+    LayoutPreferredInner: TLayout;
+    LabelPreferred: TLabel;
+    LayoutPreferredSeg: TLayout;
+    RectSeg30: TRectangle;
+    LabelSeg30: TLabel;
+    RectSeg60: TRectangle;
+    LabelSeg60: TLabel;
+    RectSeg120: TRectangle;
+    LabelSeg120: TLabel;
+    LabelPreferredHint: TLabel;
+    LayoutScene: TLayout;
     procedure FormCreate(ASender: TObject);
     procedure FormDestroy(ASender: TObject);
     procedure FormShow(ASender: TObject);
     procedure FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
     procedure FormResize(ASender: TObject);
+    procedure PreferredSegClick(ASender: TObject);
   private
     FPaintBox: TSkPaintBox;
-    FPanelStats: TRectangle;
-    FLabelStats: TLabel;
     FGameLoop: TGameLoop;
     FScene: TAetherScene;
-    FFrameStats: TFrameStats;
+    FStatsHud: TStatsHudModel;
+    FApplyingPreferred: Boolean;
 
     procedure CreateUi;
+    procedure StylePreferredSegment(const ARect: TRectangle; const ALabel: TLabel;
+      const ASelected: Boolean);
+    procedure SyncPreferredSegmentsFromGlobal;
+    function GetSceneViewportHeight: Single;
     procedure SyncViewportFromPaintBox;
     procedure EnsureSceneInitialized;
     procedure DoGameUpdate(const ADeltaTime: Double);
@@ -94,6 +93,7 @@ type
       const ADest: TRectF;
       const AOpacity: Single);
     procedure UpdateStatsFooter;
+    procedure ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
   end;
 
 var
@@ -104,107 +104,94 @@ implementation
 {$R *.fmx}
 
 const
-  cStatsPanelHeight = 40;
-  cStatsRefreshInterval = 0.25;
-  cStatsBarColor = $FF0B1220;
-  cStatsTextColor = $FFE8EEF8;
-  scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim time: %.1f s' + sLineBreak +
-    'Platform: %s  |  Backend: %s';
-
-{ TFrameStats }
-
-procedure TFrameStats.Reset;
-begin
-  Stopwatch := TStopwatch.StartNew;
-  FrameCount := 0;
-  WindowStart := 0;
-  LastRenderTime := 0;
-  Fps := 0;
-  FrameMs := 0;
-  RefreshTimer := 0;
-  PlatformLabel := '';
-  BackendLabel := '';
-end;
-
-
-procedure TFrameStats.CaptureEnvironment;
-begin
-  PlatformLabel := GetHostPlatformLabel;
-  BackendLabel := GetActiveRenderBackendLabel;
-end;
-
-procedure TFrameStats.OnFrameRendered;
-var
-  LNow: Double;
-begin
-  LNow := Stopwatch.Elapsed.TotalSeconds;
-  if LastRenderTime > 0 then
-  begin
-    FrameMs := (LNow - LastRenderTime) * 1000.0;
-  end;
-  LastRenderTime := LNow;
-
-  Inc(FrameCount);
-  if (LNow - WindowStart) >= 1.0 then
-  begin
-    Fps := FrameCount;
-    FrameCount := 0;
-    WindowStart := LNow;
-  end;
-end;
-
-function TFrameStats.ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
-begin
-  RefreshTimer := RefreshTimer + ADeltaTime;
-  Result := RefreshTimer >= AInterval;
-  if Result then
-  begin
-    RefreshTimer := 0;
-  end;
-end;
-
-function TFrameStats.FormatLine(
-  const AParticleCount, AOrbCount: Integer;
-  const ASimTime: Double): string;
-begin
-  Result := Format(scStatsFormat,
-    [Fps, FrameMs, AParticleCount, AOrbCount, ASimTime, PlatformLabel, BackendLabel]);
-end;
+  // Match stats HUD chrome (AetherOrbits.Stats.Hud).
+  cBarBg = $FF0B1220;
+  cBarLine = $FF1E2A3C;
+  cSegIdleFill = $FF151C2A;
+  cSegIdleStroke = $FF2A3A50;
+  cSegIdleText = $FF9AABC4;
+  cSegSelFill = $FF2563A8;
+  cSegSelStroke = $FF3B82C4;
+  cSegSelText = $FFE8EEF8;
+  cLabelMuted = $FF8B9BB4;
+  cHintMuted = $FF5C6B82;
 
 { TFormMain }
 
+procedure TFormMain.StylePreferredSegment(
+  const ARect: TRectangle;
+  const ALabel: TLabel;
+  const ASelected: Boolean);
+begin
+  if ASelected then
+  begin
+    ARect.Fill.Color := cSegSelFill;
+    ARect.Stroke.Color := cSegSelStroke;
+    ALabel.TextSettings.FontColor := cSegSelText;
+  end
+  else
+  begin
+    ARect.Fill.Color := cSegIdleFill;
+    ARect.Stroke.Color := cSegIdleStroke;
+    ALabel.TextSettings.FontColor := cSegIdleText;
+  end;
+end;
+
+procedure TFormMain.SyncPreferredSegmentsFromGlobal;
+var
+  LFps: Integer;
+begin
+  LFps := GetPreferredFramesPerSecond;
+  if not ((LFps = 30) or (LFps = 60) or (LFps = 120)) then
+  begin
+    LFps := 60;
+  end;
+
+  FApplyingPreferred := True;
+  try
+    StylePreferredSegment(RectSeg30, LabelSeg30, LFps = 30);
+    StylePreferredSegment(RectSeg60, LabelSeg60, LFps = 60);
+    StylePreferredSegment(RectSeg120, LabelSeg120, LFps = 120);
+  finally
+    FApplyingPreferred := False;
+  end;
+end;
+
 procedure TFormMain.CreateUi;
 begin
-  FPanelStats := TRectangle.Create(Self);
-  FPanelStats.Parent := Self;
-  FPanelStats.Align := TAlignLayout.Bottom;
-  FPanelStats.Height := cStatsPanelHeight;
-  FPanelStats.HitTest := False;
-  FPanelStats.Stroke.Kind := TBrushKind.None;
-  FPanelStats.Fill.Kind := TBrushKind.Solid;
-  FPanelStats.Fill.Color := cStatsBarColor;
-
-  FLabelStats := TLabel.Create(Self);
-  FLabelStats.Parent := FPanelStats;
-  FLabelStats.Align := TAlignLayout.Client;
-  FLabelStats.HitTest := False;
-  FLabelStats.Margins.Left := 12;
-  FLabelStats.Margins.Right := 12;
-  FLabelStats.VertTextAlign := TTextAlign.Center;
-  FLabelStats.StyledSettings := [];
-  FLabelStats.TextSettings.Font.Size := 12;
-  FLabelStats.TextSettings.Font.Style := [TFontStyle.fsBold];
-  FLabelStats.TextSettings.FontColor := cStatsTextColor;
-  FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
-  FLabelStats.WordWrap := True;
-  FLabelStats.Text := 'FPS: -';
-
+  // Paint box lives only in LayoutScene (Align=Client). Never parent it to the
+  // form with Align=Client — that can cover LayoutPreferred in z-order.
   FPaintBox := TSkPaintBox.Create(Self);
-  FPaintBox.Parent := Self;
+  FPaintBox.Parent := LayoutScene;
   FPaintBox.Align := TAlignLayout.Client;
   FPaintBox.HitTest := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
+
+  // Ensure bar colors survive platform style injection.
+  RectPreferredBg.Fill.Color := cBarBg;
+  RectPreferredBottomLine.Fill.Color := cBarLine;
+  LabelPreferred.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelPreferred.TextSettings.FontColor := cLabelMuted;
+  LabelPreferredHint.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelPreferredHint.TextSettings.FontColor := cHintMuted;
+  LabelSeg30.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelSeg60.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelSeg120.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+
+  // Small gaps between segment chips (Align=Left otherwise packs flush).
+  RectSeg60.Margins.Left := 8;
+  RectSeg120.Margins.Left := 8;
+
+  LayoutPreferred.Visible := True;
+  LayoutPreferred.BringToFront;
+  // Hint is desktop-only clutter on phones.
+  LabelPreferredHint.Visible := ClientWidth >= 640;
+  SyncPreferredSegmentsFromGlobal;
+end;
+
+function TFormMain.GetSceneViewportHeight: Single;
+begin
+  Result := Max(1, FPaintBox.Height - GetStatsHudHeight(FPaintBox.Width));
 end;
 
 procedure TFormMain.SyncViewportFromPaintBox;
@@ -214,7 +201,7 @@ begin
     Exit;
   end;
 
-  FScene.SetViewport(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+  FScene.SetViewport(Max(1, FPaintBox.Width), GetSceneViewportHeight);
 end;
 
 procedure TFormMain.EnsureSceneInitialized;
@@ -225,20 +212,66 @@ begin
   end
   else
   begin
-    FScene.Initialize(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+    FScene.Initialize(Max(1, FPaintBox.Width), GetSceneViewportHeight);
   end;
+end;
+
+procedure TFormMain.ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
+var
+  LWasRunning: Boolean;
+begin
+  if GetPreferredFramesPerSecond = AFps then
+  begin
+    SyncPreferredSegmentsFromGlobal;
+    Exit;
+  end;
+
+  SetPreferredFramesPerSecond(AFps);
+  SyncPreferredSegmentsFromGlobal;
+
+  if ARestartLoop and Assigned(FGameLoop) then
+  begin
+    // Mac/iOS CADisplayLink applies preferred range on Subscribe — restart loop.
+    // Windows DWM still needs GameLoop Preferred pacing (see AetherOrbits.GameLoop).
+    LWasRunning := FGameLoop.Running;
+    FGameLoop.StopLoop;
+    if LWasRunning or Visible then
+    begin
+      FGameLoop.StartLoop;
+    end;
+  end;
+
+  UpdateStatsFooter;
+end;
+
+procedure TFormMain.PreferredSegClick(ASender: TObject);
+var
+  LFps: Integer;
+begin
+  if FApplyingPreferred then
+  begin
+    Exit;
+  end;
+
+  if (ASender = RectSeg30) or (ASender = LabelSeg30) then
+    LFps := 30
+  else if (ASender = RectSeg120) or (ASender = LabelSeg120) then
+    LFps := 120
+  else
+    LFps := 60;
+
+  ApplyPreferredFps(LFps, True);
 end;
 
 procedure TFormMain.FormCreate(ASender: TObject);
 begin
   FScene := TAetherScene.Create;
   CreateUi;
-  FFrameStats.Reset;
+  FStatsHud.Reset;
 
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
   FGameLoop.OnRender := DoGameRender;
-  // Initialize + StartLoop in FormShow (layout size + visibility)
 end;
 
 procedure TFormMain.FormShow(ASender: TObject);
@@ -250,8 +283,7 @@ begin
     FGameLoop.StartLoop;
   end;
 
-  // Backend is registered after GlobalUseSkia + app init
-  FFrameStats.CaptureEnvironment;
+  FStatsHud.CaptureEnvironment;
   UpdateStatsFooter;
 end;
 
@@ -266,6 +298,10 @@ end;
 
 procedure TFormMain.FormResize(ASender: TObject);
 begin
+  if Assigned(LabelPreferredHint) then
+  begin
+    LabelPreferredHint.Visible := ClientWidth >= 640;
+  end;
   if Assigned(FScene) and FScene.Initialized then
   begin
     SyncViewportFromPaintBox;
@@ -273,19 +309,26 @@ begin
 end;
 
 procedure TFormMain.FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
+var
+  LLocal: TPointF;
 begin
-  if Assigned(FScene) then
+  if not Assigned(FScene) or not Assigned(FPaintBox) then
   begin
-    FScene.SetMousePosition(TPointF.Create(AX, AY));
+    Exit;
+  end;
+  // Form client → screen → paint-box local (preferred bar sits above LayoutScene).
+  LLocal := FPaintBox.ScreenToLocal(ClientToScreen(TPointF.Create(AX, AY)));
+  if FPaintBox.LocalRect.Contains(LLocal) then
+  begin
+    FScene.SetMousePosition(LLocal);
   end;
 end;
 
 procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
 begin
-  // Viewport is layout-owned — never re-derived from form height here
   FScene.Update(ADeltaTime);
 
-  if FFrameStats.ShouldRefreshFooter(ADeltaTime, cStatsRefreshInterval) then
+  if FStatsHud.ShouldRefresh(ADeltaTime) then
   begin
     UpdateStatsFooter;
   end;
@@ -293,21 +336,22 @@ end;
 
 procedure TFormMain.DoGameRender;
 begin
-  FFrameStats.OnFrameRendered;
+  FStatsHud.OnFrameRendered;
   FPaintBox.Redraw;
 end;
 
 procedure TFormMain.UpdateStatsFooter;
 begin
-  if not Assigned(FLabelStats) or not Assigned(FScene) then
+  if not Assigned(FScene) then
   begin
     Exit;
   end;
 
-  FLabelStats.Text := FFrameStats.FormatLine(
+  FStatsHud.RefreshText(
     FScene.ParticleCount,
     FScene.OrbCount,
-    FScene.Time);
+    FScene.Time,
+    FPaintBox.Width);
 end;
 
 procedure TFormMain.DoPaintBoxDraw(
@@ -315,8 +359,13 @@ procedure TFormMain.DoPaintBoxDraw(
   const ACanvas: ISkCanvas;
   const ADest: TRectF;
   const AOpacity: Single);
+var
+  LSceneDest: TRectF;
 begin
-  TAetherSceneRenderer.Draw(FScene, ACanvas, ADest);
+  LSceneDest := ADest;
+  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - GetStatsHudHeight(ADest.Width));
+  TAetherSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
+  TStatsHudPainter.Draw(ACanvas, ADest, FStatsHud.Text);
 end;
 
 end.

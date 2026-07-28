@@ -18,10 +18,12 @@ uses
   System.Classes,
   // FMX
   FMX.Forms,
+  FMX.Types,
   // Test
   DUnitX.TestFramework,
   // Own
-  AetherOrbits.GameLoop;
+  AetherOrbits.GameLoop,
+  AetherOrbits.SystemInfo;
 
 type
   /// <summary>
@@ -58,6 +60,8 @@ type
     procedure ProcessAnimation_ClampsLargeFrameTime;
     [Test]
     procedure ProcessAnimation_InvokesRenderOncePerTick;
+    [Test]
+    procedure ProcessAnimation_PreferredPace_SkipsTooSoonTicks;
     [Test]
     procedure Create_WithFmxOwner_SetsParent;
     [Test]
@@ -154,6 +158,8 @@ end;
 
 procedure TGameLoopTests.ProcessAnimation_InvokesRenderOncePerTick;
 begin
+  // Back-to-back ticks have ~0 wall delta; disable preferred pacing for this test.
+  FLoop.PaceToPreferredFps := False;
   FLoop.StartLoop;
   try
     FRenderCount := 0;
@@ -165,6 +171,35 @@ begin
     Assert.AreEqual(2, FRenderCount, 'OnRender once per Tick call');
   finally
     FLoop.StopLoop;
+  end;
+end;
+
+procedure TGameLoopTests.ProcessAnimation_PreferredPace_SkipsTooSoonTicks;
+var
+  LSaved: Integer;
+begin
+  LSaved := GetPreferredFramesPerSecond;
+  try
+    SetPreferredFramesPerSecond(30);
+    FLoop.PaceToPreferredFps := True;
+    FLoop.StartLoop;
+    try
+      // Start may already process one frame; wait out preferred period (~33 ms).
+      Sleep(40);
+      FRenderCount := 0;
+      FLoop.Tick;
+      Assert.AreEqual(1, FRenderCount, 'Tick after preferred period must render');
+      // Immediate second tick must be skipped (preferred period ~33 ms).
+      FLoop.Tick;
+      Assert.AreEqual(1, FRenderCount, 'Too-soon tick must not render when pacing');
+      Sleep(40);
+      FLoop.Tick;
+      Assert.AreEqual(2, FRenderCount, 'After preferred period, work runs again');
+    finally
+      FLoop.StopLoop;
+    end;
+  finally
+    SetPreferredFramesPerSecond(LSaved);
   end;
 end;
 
