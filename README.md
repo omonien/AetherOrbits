@@ -1,12 +1,15 @@
 # Aether Orbits
 
-A small **Delphi 13** FireMonkey demo: glowing orbs, particles, and a VSync-driven game loop — rendered with **Skia**, no third-party game engine.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Delphi](https://img.shields.io/badge/Delphi-13%20Florence-EE1F35.svg)](https://www.embarcadero.com/products/delphi)
+[![FMX](https://img.shields.io/badge/FMX-FireMonkey-0D6EFD.svg)](https://docwiki.embarcadero.com/RADStudio/en/FireMonkey)
+[![Skia](https://img.shields.io/badge/Skia-GPU%20%2F%20Metal%20%2F%20GL-26A69A.svg)](docs/FMX-Skia-Gotchas.md)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20iOS-6C757D.svg)](#platforms--backends)
+[![Game loop](https://img.shields.io/badge/game%20loop-Display%20Link-7B2CBF.svg)](docs/GameLoop.md)
+[![GitHub release](https://img.shields.io/github/v/release/omonien/AetherOrbits?include_prereleases&label=release&color=success)](https://github.com/omonien/AetherOrbits/releases)
+[![Stars](https://img.shields.io/github/stars/omonien/AetherOrbits?style=social)](https://github.com/omonien/AetherOrbits/stargazers)
 
-| | |
-|--|--|
-| **Platforms** | Windows 64-bit · macOS · iOS |
-| **IDE** | Delphi 13 Florence (or newer) with integrated Skia |
-| **License** | [MIT](LICENSE) |
+A small **Delphi 13** FireMonkey demo: glowing orbs, particles, and a VSync-driven game loop — rendered with **Skia**, no third-party game engine.
 
 ---
 
