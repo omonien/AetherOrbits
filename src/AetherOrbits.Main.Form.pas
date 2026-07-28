@@ -248,7 +248,7 @@ end;
 
 procedure TFormMain.FormResize(ASender: TObject);
 begin
-  if FScene.Initialized then
+  if Assigned(FScene) and FScene.Initialized then
   begin
     SyncViewportFromPaintBox;
   end;
