@@ -149,13 +149,24 @@ end;
 
 procedure TFormMain.DoUpdate(const ADeltaTime: Double);
 begin
-  // Fixed-timestep logic / physics (ADeltaTime is always FixedTimeStep).
+  // Called 0..N times per display frame with a *fixed* step (default 1/60 s).
+  // This is the "brain" of the demo — advance the world, not the pixels:
+  //
+  //   Player.X := Player.X + Player.SpeedX * ADeltaTime;
+  //   for each enemy: move, collide, score…
+  //   ParticleSystem.Step(ADeltaTime);
+  //
+  // Keep this free of drawing code so the sim stays deterministic and testable.
 end;
 
 procedure TFormMain.DoRender;
 begin
-  // Invalidate UI / paint box / GPU surface for this frame.
-  // Invalidate;
+  // Called once per processed frame *after* updates. Only "show the result":
+  //
+  //   PaintBox.Redraw;          // or Invalidate;
+  //   // …and in OnDraw / Paint: draw sprites, HUD, background from current state
+  //
+  // Do not advance physics here — that belongs in DoUpdate.
 end;
 ```
 
