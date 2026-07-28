@@ -135,7 +135,8 @@ AetherOrbits/
 
 - Delphi 13 Florence (or newer) — Display Link–driven `TAnimation`
 - Integrated Skia — demo rendering / backends only; **not** required by `GameLoop`
-- Windows 64-bit (default; Win32 also enabled)
+- Windows 64-bit (default target)
+- macOS 64-bit (OSX64) enabled in the project
 
 ## Build
 
