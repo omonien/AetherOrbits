@@ -36,6 +36,7 @@ uses
   FMX.Graphics,
   FMX.StdCtrls,
   FMX.Layouts,
+  FMX.Objects,
   // Skia
   System.Skia,
   FMX.Skia,
@@ -56,7 +57,7 @@ type
     procedure FormResize(ASender: TObject);
   private
     FPaintBox: TSkPaintBox;
-    FPanelStats: TPanel;
+    FPanelStats: TRectangle;
     FLabelStats: TLabel;
     FGameLoop: TGameLoop;
     FScene: TAetherScene;
@@ -97,24 +98,30 @@ const
 procedure TFormMain.CreateUi;
 begin
   // Footer first so Align.Bottom claims space; paint box fills the rest
-  FPanelStats := TPanel.Create(Self);
+  // Explicit dark bar (TPanel style is often light grey — white text would vanish)
+  FPanelStats := TRectangle.Create(Self);
   FPanelStats.Parent := Self;
   FPanelStats.Align := TAlignLayout.Bottom;
   FPanelStats.Height := cStatsPanelHeight;
-  FPanelStats.Margins.Left := 0;
-  FPanelStats.Margins.Right := 0;
-  FPanelStats.Margins.Bottom := 0;
-  FPanelStats.Margins.Top := 0;
+  FPanelStats.HitTest := False;
+  FPanelStats.Stroke.Kind := TBrushKind.None;
+  FPanelStats.Fill.Kind := TBrushKind.Solid;
+  FPanelStats.Fill.Color := $FF0B1220; // matches scene night background
+  FPanelStats.XRadius := 0;
+  FPanelStats.YRadius := 0;
 
   FLabelStats := TLabel.Create(Self);
   FLabelStats.Parent := FPanelStats;
   FLabelStats.Align := TAlignLayout.Client;
-  FLabelStats.Margins.Left := 10;
-  FLabelStats.Margins.Right := 10;
+  FLabelStats.HitTest := False;
+  FLabelStats.Margins.Left := 12;
+  FLabelStats.Margins.Right := 12;
   FLabelStats.VertTextAlign := TTextAlign.Center;
+  FLabelStats.StyledSettings := []; // take full control of font/color
   FLabelStats.TextSettings.Font.Size := 12;
-  FLabelStats.TextSettings.FontColor := TAlphaColors.White;
-  FLabelStats.StyledSettings := FLabelStats.StyledSettings - [TStyledSetting.FontColor, TStyledSetting.Size];
+  FLabelStats.TextSettings.Font.Style := [TFontStyle.fsBold];
+  FLabelStats.TextSettings.FontColor := $FFE8EEF8; // near-white on dark bar
+  FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
   FLabelStats.Text := 'FPS: —';
 
   FPaintBox := TSkPaintBox.Create(Self);
