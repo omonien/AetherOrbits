@@ -1,4 +1,4 @@
-﻿# AetherOrbits.GameLoop — standalone FMX game loop (Delphi 13+)
+# AetherOrbits.GameLoop — standalone FMX game loop (Delphi 13+)
 
 ## Independence
 
@@ -42,11 +42,39 @@ Therefore:
 1. High-resolution timing (`TStopwatch`) for real frame delta  
 2. Max-frame clamp (debugger / Alt-Tab spiral-of-death guard)  
 3. Fixed timestep updates (Glenn Fiedler pattern)  
-4. One render/invalidate notification per display tick  
+4. One render/invalidate notification per **processed** frame  
+5. Optional **Preferred-FPS pacing** (see below)
 
 If you only remember one line from this project: **the kernel is the
 `ProcessAnimation` override on a `TAnimation` subclass under Delphi 13’s
 Display Link.**
+
+## Three different “FPS” rates
+
+Do not treat these as the same knob:
+
+| Concept | Source | Role |
+|---------|--------|------|
+| **Display-link / VSync** | FMX Display Link | How often `ProcessAnimation` is *called* |
+| **Preferred FPS** | `GlobalPreferredFramesPerSecond` (demo radios: 30/60/120) | How often this loop should *do* update+render |
+| **FixedTimeStep** | `TGameLoop.FixedTimeStep` (default 1/60) | Simulation/physics step size only |
+
+### Platform behaviour
+
+| Platform | Display-link call rate | Preferred honouring |
+|----------|------------------------|---------------------|
+| **iOS / macOS** | CADisplayLink | Usually respects preferred range |
+| **Windows (DWM)** | `DwmFlush` ≈ monitor Hz | Preferred interval is largely **ignored** by FMX |
+
+So on Windows, choosing **30** in the UI still yields ~60 display-link callbacks unless the game loop itself paces.
+
+### Preferred-FPS pacing in this unit
+
+When `PaceToPreferredFps` is **True** (default), `ProcessAnimation` returns early until at least roughly `1 / GlobalPreferredFramesPerSecond` seconds of wall time have elapsed since the last processed frame. That makes Preferred 30 actually measure ~30 FPS on Windows while leaving FixedTimeStep alone.
+
+- Preferred **cannot** exceed the display-link ceiling (120 preferred on a 60 Hz panel stays ~60).
+- Unit tests that call `ProcessAnimation` back-to-back without real time should set `PaceToPreferredFps := False`.
+- Restarting the loop after changing preferred still helps Mac/iOS CADisplayLink re-apply its range; pacing covers the Windows DWM gap.
 
 ## Skia is not the game loop
 
