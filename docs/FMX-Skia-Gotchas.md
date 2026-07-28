@@ -120,15 +120,45 @@ the footer onto Skia once Metal made the hybrid approach fragile.
 
 ---
 
-## 4. Windows: raster preference
+## 4. Windows: same class of misconfiguration — raster preferred by default
 
-`GlobalUseSkiaRasterWhenAvailable` defaults to **True** on Windows. That can
-keep you on **Skia Raster (CPU)** even when a GPU path exists.
+**Symptom:** Workable but soft performance on a VM/desktop until flags are set;
+footer shows `Skia Raster (CPU)`. After correct startup flags: e.g. **~60 FPS**
+and `Skia OpenGL (GPU)` on the same Windows VM.
 
-This demo sets `GlobalUseSkiaRasterWhenAvailable := False` so GPU backends are
-preferred when registered. On Windows you may still get Raster depending on
-OpenGL/Vulkan availability; the footer reports the class that was actually
-selected.
+**Cause:** Enabling `GlobalUseSkia := True` alone is **not** full Skia setup.
+On Windows, Embarcadero registers the raster canvas with **priority** when
+`GlobalUseSkiaRasterWhenAvailable` is True (the default):
+
+```pascal
+// FMX.Skia.Canvas.pas (simplified)
+RegisterSkiaRenderCanvas(TSkRasterCanvas,
+  {$IF DEFINED(MSWINDOWS)}GlobalUseSkiaRasterWhenAvailable{$ELSE}False{$ENDIF});
+```
+
+So the defaults effectively say:
+
+| Platform | Default that steers you to CPU raster |
+|----------|----------------------------------------|
+| **Windows** | `GlobalUseSkiaRasterWhenAvailable = True` (raster preferred) |
+| **macOS** | `GlobalUseMetal = False` (Metal canvas not offered) |
+
+Both are "Skia is on, but not the GPU path you expected." The footer is how we
+noticed: first Mac ~6 FPS Raster, then Windows 60 FPS **OpenGL** only after
+`PreferRaster` was turned off.
+
+**Mitigation in this project:**
+
+```pascal
+GlobalUseSkia := True;
+GlobalUseSkiaRasterWhenAvailable := False; // allow GL/Vulkan when registered
+```
+
+Optional later: `GlobalUseVulkan := True` on Windows/Android if you want Vulkan
+instead of OpenGL (see Skia4Delphi / RAD docs). This demo does not force Vulkan.
+
+**Takeaway:** Always **read back** the active canvas class (as the stats footer
+does). `GlobalUseSkia` alone is not a performance guarantee.
 
 ---
 
@@ -151,7 +181,7 @@ game engine.
 
 1. [ ] `GlobalUseSkia := True` before `Application.Initialize`
 2. [ ] macOS/iOS: `GlobalUseMetal := True` if you want GPU Skia
-3. [ ] Windows: consider `GlobalUseSkiaRasterWhenAvailable := False` for GPU preference
+3. [ ] Windows: `GlobalUseSkiaRasterWhenAvailable := False` (default True prefers CPU raster)
 4. [ ] `TAnimation` / game loop: set `Parent` so `Root <> nil`; start when visible
 5. [ ] Per-frame HUD: prefer Skia (or your engine) text, not FMX labels over a full paint box
 6. [ ] Log or show active canvas class once at startup (as this demo does)

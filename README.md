@@ -152,8 +152,8 @@ Or open `AetherOrbits.groupproj` in the IDE.
 
 ## FMX + Skia quirks (read this on macOS)
 
-Hybrid FMX controls + full-window Skia (especially **Metal**) has sharp edges:
-Display Link `Root`, macOS **`GlobalUseMetal` default False**, and FMX labels
+Hybrid FMX controls + full-window Skia has sharp edges on **every** platform:
+Display Link `Root`, Windows **`GlobalUseSkiaRasterWhenAvailable` default True**, macOS **`GlobalUseMetal` default False**, and FMX labels
 vanishing over a Skia paint box. **Self-rendered game views** (draw world + HUD
 in one Skia pass) avoid most of the UI compositing issues.
 

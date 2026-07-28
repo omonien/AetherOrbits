@@ -5,8 +5,9 @@
 ///
 /// <remarks>
 /// Thin shell: TGameLoop (Display Link / ProcessAnimation) drives TAetherScene;
-/// Skia is the drawing API. On macOS/iOS enable GlobalUseMetal so Skia selects
-/// the Metal GPU canvas (otherwise FMX registers only Skia Raster / CPU).
+/// Skia is the drawing API. Startup must set more than GlobalUseSkia:
+/// Windows: GlobalUseSkiaRasterWhenAvailable := False (else CPU raster is preferred);
+/// macOS/iOS: GlobalUseMetal := True (else Metal canvas is not offered).
 /// Requires Delphi 13+ with integrated Skia.
 /// </remarks>
 ///
@@ -31,7 +32,9 @@ uses
 {$R *.res}
 
 begin
-  // Prefer GPU Skia backends when the platform provides them
+  // GlobalUseSkia alone is not enough:
+  // - Windows defaults PreferRaster=True → Skia Raster (CPU) unless set False
+  // - then OpenGL (or Vulkan) can become the active form canvas
   GlobalUseSkia := True;
   GlobalUseSkiaRasterWhenAvailable := False;
 
