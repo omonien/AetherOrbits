@@ -7,7 +7,8 @@
 /// Reports percent of one logical CPU (can exceed 100 if the process uses
 /// multiple cores). Also exposes logical CPU count so the footer can show
 /// "of machine" as percent / core count.
-/// Windows: GetProcessTimes. POSIX (macOS/Linux): getrusage(RUSAGE_SELF).
+/// Windows: GetProcessTimes. POSIX (macOS/Linux): times() + sysconf(_SC_CLK_TCK).
+/// Note: Delphi OSX RTL has no Posix.SysResource unit.
 /// </remarks>
 ///
 /// <copyright>
@@ -50,29 +51,25 @@ uses
   System.SysUtils,
   System.Diagnostics,
 {$IF Defined(MSWINDOWS)}
-  Winapi.Windows;
+  Winapi.Windows
 {$ELSEIF Defined(POSIX)}
-  Posix.SysResource,
+  Posix.Base,
   Posix.SysTypes,
-  Posix.Time;
-{$ELSE}
-  ;
+  Posix.SysTimes,
+  Posix.Unistd
 {$ENDIF}
+  ;
 
 var
   GWallClock: TStopwatch;
 
 function GetLogicalProcessorCount: Integer;
 begin
-{$IF Defined(MSWINDOWS)}
   Result := CPUCount;
   if Result < 1 then
+  begin
     Result := 1;
-{$ELSE}
-  Result := CPUCount;
-  if Result < 1 then
-    Result := 1;
-{$ENDIF}
+  end;
 end;
 
 function TProcessCpuSampler.ReadWallSeconds: Double;
@@ -101,15 +98,25 @@ begin
 end;
 {$ELSEIF Defined(POSIX)}
 var
-  LUsage: rusage;
+  LTms: tms;
+  LTicksPerSec: LongInt;
+  LTicks: clock_t;
 begin
-  FillChar(LUsage, SizeOf(LUsage), 0);
-  if getrusage(RUSAGE_SELF, LUsage) <> 0 then
+  // Delphi macOS/iOS RTL does not ship Posix.SysResource; use POSIX times(2).
+  FillChar(LTms, SizeOf(LTms), 0);
+  LTicks := times(LTms);
+  if LTicks = clock_t(-1) then
   begin
     Exit(0);
   end;
-  Result := LUsage.ru_utime.tv_sec + LUsage.ru_utime.tv_usec / 1.0E6
-    + LUsage.ru_stime.tv_sec + LUsage.ru_stime.tv_usec / 1.0E6;
+
+  LTicksPerSec := sysconf(_SC_CLK_TCK);
+  if LTicksPerSec <= 0 then
+  begin
+    LTicksPerSec := 100;
+  end;
+
+  Result := (Double(LTms.tms_utime) + Double(LTms.tms_stime)) / Double(LTicksPerSec);
 end;
 {$ELSE}
 begin
