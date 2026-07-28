@@ -32,6 +32,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.UITypes,
   FMX.Forms,
   FMX.Types,
   FMX.Skia,
@@ -54,11 +55,15 @@ begin
     Assert.AreEqual('Aether Orbits - FMX + Skia Game Loop Demo', LForm.Caption);
 
     // Preferred FPS bar must stream from FMX and stay visible above the scene.
-    Assert.IsNotNull(LForm.PanelPreferred, 'PanelPreferred missing from FMX');
+    Assert.IsNotNull(LForm.LayoutPreferred, 'LayoutPreferred missing from FMX');
     Assert.IsNotNull(LForm.LayoutScene, 'LayoutScene missing from FMX');
-    Assert.IsTrue(LForm.PanelPreferred.Visible, 'PanelPreferred must be visible');
-    Assert.IsTrue(LForm.PanelPreferred.Height >= 40, 'PanelPreferred height too small');
-    Assert.IsTrue(LForm.RadioPreferred60.IsChecked, 'Default preferred FPS radio is 60');
+    Assert.IsNotNull(LForm.RectSeg60, 'Preferred segment 60 missing from FMX');
+    Assert.IsTrue(LForm.LayoutPreferred.Visible, 'LayoutPreferred must be visible');
+    Assert.IsTrue(LForm.LayoutPreferred.Height >= 40, 'LayoutPreferred height too small');
+    Assert.AreEqual('Preferred FPS', LForm.LabelPreferred.Text);
+    // Default segment 60 uses selected fill (dark theme accent).
+    Assert.AreEqual(Cardinal($FF2563A8), Cardinal(LForm.RectSeg60.Fill.Color),
+      'Default preferred segment should be selected (60)');
   finally
     FreeAndNil(LForm);
   end;

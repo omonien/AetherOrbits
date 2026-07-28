@@ -5,7 +5,7 @@ object FormMain: TFormMain
   ClientHeight = 720
   ClientWidth = 1280
   Fill.Kind = Solid
-  Fill.Color = xFF1A1A24
+  Fill.Color = xFF0B1220
   Position = ScreenCenter
   FormFactor.Width = 1920
   FormFactor.Height = 1080
@@ -16,70 +16,147 @@ object FormMain: TFormMain
   OnResize = FormResize
   OnShow = FormShow
   DesignerMasterStyle = 0
-  object PanelPreferred: TPanel
+  object LayoutPreferred: TLayout
     Align = Top
-    Position.X = 0.000000000000000000
-    Position.Y = 0.000000000000000000
     Size.Width = 1280.000000000000000000
     Size.Height = 48.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
-    object LabelPreferred: TLabel
-      Align = Left
-      StyledSettings = [Family, Style]
-      Position.X = 0.000000000000000000
-      Position.Y = 0.000000000000000000
-      Size.Width = 130.000000000000000000
+    object RectPreferredBg: TRectangle
+      Align = Contents
+      Fill.Color = xFF0B1220
+      HitTest = False
+      Size.Width = 1280.000000000000000000
       Size.Height = 48.000000000000000000
       Size.PlatformDefault = False
-      TextSettings.FontColor = xFFE8EEF8
-      TextSettings.HorzAlign = Center
-      TextSettings.VertAlign = Center
-      Text = 'Preferred FPS'
-      TabOrder = 0
+      Stroke.Kind = None
     end
-    object LayoutPreferredRadios: TLayout
-      Align = Client
-      Size.Width = 1150.000000000000000000
-      Size.Height = 48.000000000000000000
+    object RectPreferredBottomLine: TRectangle
+      Align = Bottom
+      Fill.Color = xFF1E2A3C
+      HitTest = False
+      Size.Width = 1280.000000000000000000
+      Size.Height = 1.000000000000000000
       Size.PlatformDefault = False
-      TabOrder = 1
-      object RadioPreferred30: TRadioButton
+      Stroke.Kind = None
+    end
+    object LayoutPreferredInner: TLayout
+      Align = Client
+      Padding.Left = 12.000000000000000000
+      Padding.Top = 8.000000000000000000
+      Padding.Right = 12.000000000000000000
+      Padding.Bottom = 8.000000000000000000
+      Size.Width = 1280.000000000000000000
+      Size.Height = 47.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      object LabelPreferred: TLabel
         Align = Left
-        GroupName = 'PreferredFps'
-        Position.X = 0.000000000000000000
-        Position.Y = 0.000000000000000000
-        Size.Width = 80.000000000000000000
-        Size.Height = 48.000000000000000000
+        StyledSettings = [Family, Style]
+        Size.Width = 108.000000000000000000
+        Size.Height = 31.000000000000000000
         Size.PlatformDefault = False
+        TextSettings.FontColor = xFF8B9BB4
+        TextSettings.HorzAlign = Leading
+        TextSettings.VertAlign = Center
+        Text = 'Preferred FPS'
         TabOrder = 0
-        Text = '30'
-        OnChange = RadioPreferredChange
       end
-      object RadioPreferred60: TRadioButton
+      object LayoutPreferredSeg: TLayout
         Align = Left
-        GroupName = 'PreferredFps'
-        IsChecked = True
-        Position.X = 80.000000000000000000
-        Position.Y = 0.000000000000000000
-        Size.Width = 80.000000000000000000
-        Size.Height = 48.000000000000000000
+        Size.Width = 246.000000000000000000
+        Size.Height = 31.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 1
-        Text = '60'
-        OnChange = RadioPreferredChange
+        object RectSeg30: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Size.Width = 74.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg30: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 74.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '30'
+            TabOrder = 0
+          end
+        end
+        object RectSeg60: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF2563A8
+          Position.X = 74.000000000000000000
+          Size.Width = 74.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF3B82C4
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg60: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 74.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFFE8EEF8
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '60'
+            TabOrder = 0
+          end
+        end
+        object RectSeg120: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Position.X = 148.000000000000000000
+          Size.Width = 74.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg120: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 74.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '120'
+            TabOrder = 0
+          end
+        end
       end
-      object RadioPreferred120: TRadioButton
-        Align = Left
-        GroupName = 'PreferredFps'
-        Position.X = 160.000000000000000000
-        Position.Y = 0.000000000000000000
-        Size.Width = 88.000000000000000000
-        Size.Height = 48.000000000000000000
+      object LabelPreferredHint: TLabel
+        Align = Client
+        StyledSettings = [Family, Style]
+        Size.Width = 902.000000000000000000
+        Size.Height = 31.000000000000000000
         Size.PlatformDefault = False
+        TextSettings.FontColor = xFF5C6B82
+        TextSettings.HorzAlign = Leading
+        TextSettings.VertAlign = Center
+        Text = '  request to display link (capped by panel)'
         TabOrder = 2
-        Text = '120'
-        OnChange = RadioPreferredChange
       end
     end
   end

@@ -6,8 +6,9 @@
 /// <remarks>
 /// Wires TGameLoop to TAetherScene and a TSkPaintBox. System diagnostics live
 /// in AetherOrbits.SystemInfo; the stats overlay is AetherOrbits.Stats.Hud.
-/// Preferred FPS radios set GlobalPreferredFramesPerSecond and restart the
-/// game loop so Mac/iOS Display Link re-applies the range.
+/// Preferred FPS segment control sets GlobalPreferredFramesPerSecond and
+/// restarts the game loop so Mac/iOS Display Link re-applies the range.
+/// The bar uses dark Skia-matching chrome (rectangles), not light theme panels.
 /// </remarks>
 ///
 /// <copyright>
@@ -32,6 +33,7 @@ uses
   FMX.Controls.Presentation,
   FMX.StdCtrls,
   FMX.Layouts,
+  FMX.Objects,
   FMX.Forms,
   FMX.Graphics,
   // Skia
@@ -49,19 +51,26 @@ type
   /// Main demo window: game loop + scene + Skia paint box + stats HUD.
   /// </summary>
   TFormMain = class(TForm)
-    PanelPreferred: TPanel;
+    LayoutPreferred: TLayout;
+    RectPreferredBg: TRectangle;
+    RectPreferredBottomLine: TRectangle;
+    LayoutPreferredInner: TLayout;
     LabelPreferred: TLabel;
-    LayoutPreferredRadios: TLayout;
-    RadioPreferred30: TRadioButton;
-    RadioPreferred60: TRadioButton;
-    RadioPreferred120: TRadioButton;
+    LayoutPreferredSeg: TLayout;
+    RectSeg30: TRectangle;
+    LabelSeg30: TLabel;
+    RectSeg60: TRectangle;
+    LabelSeg60: TLabel;
+    RectSeg120: TRectangle;
+    LabelSeg120: TLabel;
+    LabelPreferredHint: TLabel;
     LayoutScene: TLayout;
     procedure FormCreate(ASender: TObject);
     procedure FormDestroy(ASender: TObject);
     procedure FormShow(ASender: TObject);
     procedure FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
     procedure FormResize(ASender: TObject);
-    procedure RadioPreferredChange(ASender: TObject);
+    procedure PreferredSegClick(ASender: TObject);
   private
     FPaintBox: TSkPaintBox;
     FGameLoop: TGameLoop;
@@ -70,6 +79,9 @@ type
     FApplyingPreferred: Boolean;
 
     procedure CreateUi;
+    procedure StylePreferredSegment(const ARect: TRectangle; const ALabel: TLabel;
+      const ASelected: Boolean);
+    procedure SyncPreferredSegmentsFromGlobal;
     function GetSceneViewportHeight: Single;
     procedure SyncViewportFromPaintBox;
     procedure EnsureSceneInitialized;
@@ -81,7 +93,6 @@ type
       const ADest: TRectF;
       const AOpacity: Single);
     procedure UpdateStatsFooter;
-    procedure SyncPreferredRadiosFromGlobal;
     procedure ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
   end;
 
@@ -92,20 +103,90 @@ implementation
 
 {$R *.fmx}
 
+const
+  // Match stats HUD chrome (AetherOrbits.Stats.Hud).
+  cBarBg = $FF0B1220;
+  cBarLine = $FF1E2A3C;
+  cSegIdleFill = $FF151C2A;
+  cSegIdleStroke = $FF2A3A50;
+  cSegIdleText = $FF9AABC4;
+  cSegSelFill = $FF2563A8;
+  cSegSelStroke = $FF3B82C4;
+  cSegSelText = $FFE8EEF8;
+  cLabelMuted = $FF8B9BB4;
+  cHintMuted = $FF5C6B82;
+
 { TFormMain }
+
+procedure TFormMain.StylePreferredSegment(
+  const ARect: TRectangle;
+  const ALabel: TLabel;
+  const ASelected: Boolean);
+begin
+  if ASelected then
+  begin
+    ARect.Fill.Color := cSegSelFill;
+    ARect.Stroke.Color := cSegSelStroke;
+    ALabel.TextSettings.FontColor := cSegSelText;
+  end
+  else
+  begin
+    ARect.Fill.Color := cSegIdleFill;
+    ARect.Stroke.Color := cSegIdleStroke;
+    ALabel.TextSettings.FontColor := cSegIdleText;
+  end;
+end;
+
+procedure TFormMain.SyncPreferredSegmentsFromGlobal;
+var
+  LFps: Integer;
+begin
+  LFps := GetPreferredFramesPerSecond;
+  if not ((LFps = 30) or (LFps = 60) or (LFps = 120)) then
+  begin
+    LFps := 60;
+  end;
+
+  FApplyingPreferred := True;
+  try
+    StylePreferredSegment(RectSeg30, LabelSeg30, LFps = 30);
+    StylePreferredSegment(RectSeg60, LabelSeg60, LFps = 60);
+    StylePreferredSegment(RectSeg120, LabelSeg120, LFps = 120);
+  finally
+    FApplyingPreferred := False;
+  end;
+end;
 
 procedure TFormMain.CreateUi;
 begin
   // Paint box lives only in LayoutScene (Align=Client). Never parent it to the
-  // form with Align=Client — that can cover PanelPreferred in z-order.
+  // form with Align=Client — that can cover LayoutPreferred in z-order.
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := LayoutScene;
   FPaintBox.Align := TAlignLayout.Client;
   FPaintBox.HitTest := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
 
-  PanelPreferred.Visible := True;
-  PanelPreferred.BringToFront;
+  // Ensure bar colors survive platform style injection.
+  RectPreferredBg.Fill.Color := cBarBg;
+  RectPreferredBottomLine.Fill.Color := cBarLine;
+  LabelPreferred.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelPreferred.TextSettings.FontColor := cLabelMuted;
+  LabelPreferredHint.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelPreferredHint.TextSettings.FontColor := cHintMuted;
+  LabelSeg30.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelSeg60.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  LabelSeg120.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+
+  // Small gaps between segment chips (Align=Left otherwise packs flush).
+  RectSeg60.Margins.Left := 8;
+  RectSeg120.Margins.Left := 8;
+
+  LayoutPreferred.Visible := True;
+  LayoutPreferred.BringToFront;
+  // Hint is desktop-only clutter on phones.
+  LabelPreferredHint.Visible := ClientWidth >= 640;
+  SyncPreferredSegmentsFromGlobal;
 end;
 
 function TFormMain.GetSceneViewportHeight: Single;
@@ -135,41 +216,23 @@ begin
   end;
 end;
 
-procedure TFormMain.SyncPreferredRadiosFromGlobal;
-var
-  LFps: Integer;
-begin
-  LFps := GetPreferredFramesPerSecond;
-  FApplyingPreferred := True;
-  try
-    RadioPreferred30.IsChecked := LFps = 30;
-    RadioPreferred60.IsChecked := LFps = 60;
-    RadioPreferred120.IsChecked := LFps = 120;
-    // Unknown value (e.g. 90): fall back visually to 60 without writing global.
-    if not (RadioPreferred30.IsChecked or RadioPreferred60.IsChecked or
-      RadioPreferred120.IsChecked) then
-    begin
-      RadioPreferred60.IsChecked := True;
-    end;
-  finally
-    FApplyingPreferred := False;
-  end;
-end;
-
 procedure TFormMain.ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
 var
   LWasRunning: Boolean;
 begin
   if GetPreferredFramesPerSecond = AFps then
   begin
+    SyncPreferredSegmentsFromGlobal;
     Exit;
   end;
 
   SetPreferredFramesPerSecond(AFps);
+  SyncPreferredSegmentsFromGlobal;
 
   if ARestartLoop and Assigned(FGameLoop) then
   begin
     // Mac/iOS CADisplayLink applies preferred range on Subscribe — restart loop.
+    // Windows DWM still needs GameLoop Preferred pacing (see AetherOrbits.GameLoop).
     LWasRunning := FGameLoop.Running;
     FGameLoop.StopLoop;
     if LWasRunning or Visible then
@@ -181,7 +244,7 @@ begin
   UpdateStatsFooter;
 end;
 
-procedure TFormMain.RadioPreferredChange(ASender: TObject);
+procedure TFormMain.PreferredSegClick(ASender: TObject);
 var
   LFps: Integer;
 begin
@@ -189,18 +252,10 @@ begin
   begin
     Exit;
   end;
-  if not (ASender is TRadioButton) then
-  begin
-    Exit;
-  end;
-  if not TRadioButton(ASender).IsChecked then
-  begin
-    Exit;
-  end;
 
-  if ASender = RadioPreferred30 then
+  if (ASender = RectSeg30) or (ASender = LabelSeg30) then
     LFps := 30
-  else if ASender = RadioPreferred120 then
+  else if (ASender = RectSeg120) or (ASender = LabelSeg120) then
     LFps := 120
   else
     LFps := 60;
@@ -213,9 +268,6 @@ begin
   FScene := TAetherScene.Create;
   CreateUi;
   FStatsHud.Reset;
-
-  // Radios default to 60 in the FMX; keep UI in sync if global was pre-set.
-  SyncPreferredRadiosFromGlobal;
 
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
@@ -246,6 +298,10 @@ end;
 
 procedure TFormMain.FormResize(ASender: TObject);
 begin
+  if Assigned(LabelPreferredHint) then
+  begin
+    LabelPreferredHint.Visible := ClientWidth >= 640;
+  end;
   if Assigned(FScene) and FScene.Initialized then
   begin
     SyncViewportFromPaintBox;
@@ -260,7 +316,7 @@ begin
   begin
     Exit;
   end;
-  // Form client → screen → paint-box local (panel sits above LayoutScene).
+  // Form client → screen → paint-box local (preferred bar sits above LayoutScene).
   LLocal := FPaintBox.ScreenToLocal(ClientToScreen(TPointF.Create(AX, AY)));
   if FPaintBox.LocalRect.Contains(LLocal) then
   begin
