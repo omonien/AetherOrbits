@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{C3D4E5F6-A7B8-9012-CDEF-123456789012}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="src\AetherOrbits.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="tests\AetherOrbits.Tests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="AetherOrbits">
+        <MSBuild Projects="src\AetherOrbits.dproj"/>
+    </Target>
+    <Target Name="AetherOrbits:Clean">
+        <MSBuild Projects="src\AetherOrbits.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="AetherOrbits:Make">
+        <MSBuild Projects="src\AetherOrbits.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="AetherOrbits_Tests">
+        <MSBuild Projects="tests\AetherOrbits.Tests.dproj"/>
+    </Target>
+    <Target Name="AetherOrbits_Tests:Clean">
+        <MSBuild Projects="tests\AetherOrbits.Tests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="AetherOrbits_Tests:Make">
+        <MSBuild Projects="tests\AetherOrbits.Tests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="AetherOrbits;AetherOrbits_Tests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="AetherOrbits:Clean;AetherOrbits_Tests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="AetherOrbits:Make;AetherOrbits_Tests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

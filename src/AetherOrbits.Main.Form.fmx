@@ -1,0 +1,15 @@
+﻿object FormMain: TFormMain
+  Left = 0
+  Top = 0
+  Caption = 'Aether Orbits - FMX + Skia Game Loop Demo'
+  ClientHeight = 720
+  ClientWidth = 1280
+  Position = ScreenCenter
+  FormFactor.Width = 1920
+  FormFactor.Height = 1080
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnMouseMove = FormMouseMove
+  DesignerMasterStyle = 0
+end
