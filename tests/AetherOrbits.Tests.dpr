@@ -24,8 +24,11 @@ uses
   DUnitX.Loggers.Console,
   DUnitX.Loggers.XML.NUnit,
   AetherOrbits.GameLoop in '..\src\AetherOrbits.GameLoop.pas',
+  AetherOrbits.Scene in '..\src\AetherOrbits.Scene.pas',
+  AetherOrbits.Scene.Renderer in '..\src\AetherOrbits.Scene.Renderer.pas',
   AetherOrbits.Main.Form in '..\src\AetherOrbits.Main.Form.pas' {FormMain},
   AetherOrbits.GameLoop.Tests in 'AetherOrbits.GameLoop.Tests.pas',
+  AetherOrbits.Scene.Tests in 'AetherOrbits.Scene.Tests.pas',
   AetherOrbits.Main.Form.Smoke in 'AetherOrbits.Main.Form.Smoke.pas';
 
 var
@@ -53,9 +56,13 @@ begin
     LResults := LRunner.Execute;
 
     if not LResults.AllPassed then
-      System.ExitCode := 1
+    begin
+      System.ExitCode := 1;
+    end
     else
+    begin
       System.ExitCode := 0;
+    end;
   except
     on E: Exception do
     begin

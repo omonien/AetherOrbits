@@ -13,9 +13,12 @@ unit AetherOrbits.GameLoop.Tests;
 interface
 
 uses
-  DUnitX.TestFramework,
+  // System
   System.SysUtils,
   System.Classes,
+  // Test
+  DUnitX.TestFramework,
+  // Own
   AetherOrbits.GameLoop;
 
 type
@@ -56,9 +59,6 @@ type
 
 implementation
 
-uses
-  System.Diagnostics;
-
 { TGameLoopHarness }
 
 procedure TGameLoopHarness.Tick;
@@ -80,8 +80,7 @@ end;
 
 procedure TGameLoopTests.TearDown;
 begin
-  FLoop.Free;
-  FLoop := nil;
+  FreeAndNil(FLoop);
 end;
 
 procedure TGameLoopTests.HandleUpdate(const ADeltaTime: Double);
@@ -116,7 +115,6 @@ begin
   FLoop.FixedTimeStep := 1 / 60;
   FLoop.StartLoop;
   try
-    // Wait long enough for several fixed steps to accumulate
     Sleep(50);
     FLoop.Tick;
 
@@ -130,15 +128,14 @@ end;
 procedure TGameLoopTests.ProcessAnimation_ClampsLargeFrameTime;
 begin
   FLoop.FixedTimeStep := 1 / 60;
-  FLoop.MaxFrameTime := 0.05; // 50 ms clamp
+  FLoop.MaxFrameTime := 0.05;
   FLoop.StartLoop;
   try
-    // Simulate a long pause (debugger-style) before the next tick
     Sleep(200);
     FLoop.Tick;
 
-    // With 50 ms clamp and 1/60 step, at most ceil(0.05 / (1/60)) = 3 updates
-    Assert.IsTrue(FUpdateCount <= 3, Format('Updates %d should be clamped by MaxFrameTime', [FUpdateCount]));
+    Assert.IsTrue(FUpdateCount <= 3,
+      Format('Updates %d should be clamped by MaxFrameTime', [FUpdateCount]));
     Assert.IsTrue(FUpdateCount >= 1, 'Still expect at least one update after pause');
   finally
     FLoop.StopLoop;

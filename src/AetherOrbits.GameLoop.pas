@@ -23,8 +23,13 @@ unit AetherOrbits.GameLoop;
 interface
 
 uses
-  System.Classes, System.Diagnostics, System.SysUtils,
-  FMX.Types, FMX.Ani;
+  // System
+  System.Classes,
+  System.Diagnostics,
+  System.SysUtils,
+  // FMX
+  FMX.Types,
+  FMX.Ani;
 
 type
   /// <summary>
@@ -56,7 +61,7 @@ type
     constructor Create(AOwner: TComponent); override;
 
     /// <summary>
-    /// Starts the loop (sets Loop := True and starts the animation).
+    /// Starts the loop (resets timing, sets Loop, starts the animation).
     /// </summary>
     procedure StartLoop;
 
@@ -66,12 +71,12 @@ type
     procedure StopLoop;
 
     /// <summary>
-    /// Fixed timestep for physics/logic (default: 1/60).
+    /// Fixed timestep for physics/logic (default: 1/60 s).
     /// </summary>
     property FixedTimeStep: Double read FFixedTimeStep write FFixedTimeStep;
 
     /// <summary>
-    /// Maximum allowed frame time (spiral-of-death guard).
+    /// Maximum allowed frame time in seconds (spiral-of-death guard).
     /// </summary>
     property MaxFrameTime: Double read FMaxFrameTime write FMaxFrameTime;
 
@@ -88,20 +93,28 @@ type
 
 implementation
 
+const
+  /// <summary>Default physics/logic step: 60 Hz.</summary>
+  cDefaultFixedTimeStep = 1 / 60;
+  /// <summary>Default clamp for a single frame (100 ms).</summary>
+  cDefaultMaxFrameTime = 0.1;
+  /// <summary>Practically infinite TAnimation duration while Loop is True.</summary>
+  cInfiniteAnimationDuration = 1E10;
+
 { TGameLoop }
 
 constructor TGameLoop.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FFixedTimeStep := 1 / 60;
-  FMaxFrameTime := 0.1; // 100 ms clamp
+  FFixedTimeStep := cDefaultFixedTimeStep;
+  FMaxFrameTime := cDefaultMaxFrameTime;
   FAccumulator := 0;
   FLastTime := 0;
   FStopwatch := TStopwatch.StartNew;
 
-  // Keep the animation running continuously
+  // Keep the animation running continuously under the Display Link Service
   Loop := True;
-  Duration := 1E10; // effectively infinite
+  Duration := cInfiniteAnimationDuration;
 end;
 
 procedure TGameLoop.StartLoop;
@@ -110,7 +123,7 @@ begin
   FStopwatch.Start;
   FLastTime := 0;
   FAccumulator := 0;
-  Start; // TAnimation.Start
+  Start;
 end;
 
 procedure TGameLoop.StopLoop;
@@ -120,7 +133,8 @@ end;
 
 procedure TGameLoop.ProcessAnimation;
 var
-  LNow, LFrameTime: Double;
+  LNow: Double;
+  LFrameTime: Double;
 begin
   LNow := FStopwatch.Elapsed.TotalSeconds;
   LFrameTime := LNow - FLastTime;
@@ -128,7 +142,9 @@ begin
 
   // Guard against large time jumps (debugger, Alt-Tab, etc.)
   if LFrameTime > FMaxFrameTime then
+  begin
     LFrameTime := FMaxFrameTime;
+  end;
 
   FAccumulator := FAccumulator + LFrameTime;
 
@@ -136,14 +152,18 @@ begin
   while FAccumulator >= FFixedTimeStep do
   begin
     if Assigned(FOnUpdate) then
+    begin
       FOnUpdate(FFixedTimeStep);
+    end;
 
     FAccumulator := FAccumulator - FFixedTimeStep;
   end;
 
   // Render / invalidate once per frame
   if Assigned(FOnRender) then
+  begin
     FOnRender;
+  end;
 end;
 
 end.

@@ -5,69 +5,55 @@ FMX + Skia game-loop demo for **Delphi 13+**.
 High-quality atmospheric demo that shows how to run a modern, VSync-synchronized
 game loop under **FireMonkey + Skia** — **without third-party libraries**.
 
+## Architecture (SoC)
+
+| Layer | Unit | Responsibility |
+|-------|------|----------------|
+| Timing | `AetherOrbits.GameLoop` | VSync loop via `TAnimation` / Display Link, fixed timestep |
+| Simulation | `AetherOrbits.Scene` | Orbs, particles, mouse forces — **no UI, no Skia** |
+| Rendering | `AetherOrbits.Scene.Renderer` | Skia draw of scene state — **no simulation** |
+| UI shell | `AetherOrbits.Main.Form` | Form + paint box; wires loop ↔ scene ↔ redraw |
+
 ## The core idea
 
-The important unit is:
-
-**`src/AetherOrbits.GameLoop.pas`**
-
-It derives from `TAnimation` and overrides `ProcessAnimation`. The loop is then
-driven by the **Display Link Service** (Delphi 13) — i.e. directly by VSync /
-the display refresh rate.
-
-That is the clean, framework-native way to implement game loops under FMX.
+**`src/AetherOrbits.GameLoop.pas`** derives from `TAnimation` and overrides
+`ProcessAnimation`. The loop is driven by the **Display Link Service** (Delphi 13)
+— i.e. directly by VSync / the display refresh rate.
 
 ## Project layout
 
 ```
 AetherOrbits/
 ├── src/
-│   ├── AetherOrbits.dpr              # Application entry
-│   ├── AetherOrbits.dproj
-│   ├── AetherOrbits.GameLoop.pas     # ★ Isolated game-loop core
-│   ├── AetherOrbits.Main.Form.pas    # Demo scene (orbs + particles)
-│   └── AetherOrbits.Main.Form.fmx
-├── tests/
-│   ├── AetherOrbits.Tests.dpr        # DUnitX runner
-│   ├── AetherOrbits.Tests.dproj
-│   ├── AetherOrbits.GameLoop.Tests.pas
-│   └── AetherOrbits.Main.Form.Smoke.pas
-├── build/                            # Output (git-ignored)
-├── build-scripts/
-│   └── DelphiBuildDPROJ.ps1
-├── libs/
-│   └── DUnitX/                       # Git submodule
+│   ├── AetherOrbits.dpr / .dproj
+│   ├── AetherOrbits.GameLoop.pas
+│   ├── AetherOrbits.Scene.pas
+│   ├── AetherOrbits.Scene.Renderer.pas
+│   └── AetherOrbits.Main.Form.pas / .fmx
+├── tests/                          # DUnitX (loop + scene + form smoke)
+├── build/                          # Output (git-ignored)
+├── build-scripts/DelphiBuildDPROJ.ps1
+├── libs/DUnitX/                    # Git submodule
+├── docs/Delphi Style Guide EN.md
 ├── AetherOrbits.groupproj
-├── LICENSE                           # MIT
-└── README.md
+└── LICENSE                         # MIT
 ```
 
 ## Requirements
 
 - Delphi 13 Florence (or newer)
-- Integrated Skia (ships with modern Delphi)
-- Windows 64-bit (default target; Win32 also enabled)
+- Integrated Skia
+- Windows 64-bit (default; Win32 also enabled)
 
 ## Build
 
 ```powershell
-# App
 .\build-scripts\DelphiBuildDPROJ.ps1 -ProjectFile "src\AetherOrbits.dproj" -Platform Win64 -Config Debug
-
-# Tests
 .\build-scripts\DelphiBuildDPROJ.ps1 -ProjectFile "tests\AetherOrbits.Tests.dproj" -Platform Win64 -Config Debug
 .\build\Win64\Debug\AetherOrbits.Tests.exe
 ```
 
 Or open `AetherOrbits.groupproj` in the IDE.
-
-## Usage notes
-
-- The demo is fully procedural (no external image assets).
-- Mouse movement gently influences particles.
-- Fixed timestep (1/60) + DisplayLink rendering.
-- `AetherOrbits.GameLoop` is generic and can be copied into other projects as-is.
-- `GlobalUseSkia := True` is set in the program entry point.
 
 ## License
 

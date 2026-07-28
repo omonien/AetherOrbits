@@ -43,7 +43,9 @@ var
 begin
   GlobalUseSkia := True;
   if not Assigned(Application) then
+  begin
     raise Exception.Create('FMX Application not available');
+  end;
 
   Application.Initialize;
   LForm := TFormMain.Create(nil);
@@ -51,7 +53,7 @@ begin
     Assert.IsNotNull(LForm, 'Form must construct');
     Assert.AreEqual('Aether Orbits - FMX + Skia Game Loop Demo', LForm.Caption);
   finally
-    LForm.Free;
+    FreeAndNil(LForm);
   end;
 end;
 

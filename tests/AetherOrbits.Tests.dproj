@@ -85,8 +85,11 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="AetherOrbits.GameLoop.Tests.pas"/>
+        <DCCReference Include="AetherOrbits.Scene.Tests.pas"/>
         <DCCReference Include="AetherOrbits.Main.Form.Smoke.pas"/>
         <DCCReference Include="..\src\AetherOrbits.GameLoop.pas"/>
+        <DCCReference Include="..\src\AetherOrbits.Scene.pas"/>
+        <DCCReference Include="..\src\AetherOrbits.Scene.Renderer.pas"/>
         <DCCReference Include="..\src\AetherOrbits.Main.Form.pas">
             <Form>FormMain</Form>
             <FormType>fmx</FormType>

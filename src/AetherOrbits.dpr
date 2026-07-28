@@ -4,8 +4,8 @@
 /// </summary>
 ///
 /// <remarks>
-/// Atmospheric particle/orb demo driven by TGameLoop (VSync via TAnimation
-/// Display Link). Requires Delphi 13+ with integrated Skia.
+/// Thin shell: TGameLoop drives TAetherScene; Skia rendering is separate.
+/// Requires Delphi 13+ with integrated Skia.
 /// </remarks>
 ///
 /// <copyright>
@@ -20,7 +20,9 @@ uses
   FMX.Forms,
   FMX.Skia,
   AetherOrbits.Main.Form in 'AetherOrbits.Main.Form.pas' {FormMain},
-  AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas';
+  AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas',
+  AetherOrbits.Scene in 'AetherOrbits.Scene.pas',
+  AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas';
 
 {$R *.res}
 
