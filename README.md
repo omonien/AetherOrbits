@@ -1,164 +1,163 @@
-﻿# Aether Orbits
+# Aether Orbits
 
-FMX + Skia demo for **Delphi 13+**: a VSync-driven game loop plus an atmospheric
-scene drawn with Skia’s efficient rendering backends — **without third-party
-game frameworks**.
+A small **Delphi 13** FireMonkey demo: glowing orbs, particles, and a VSync-driven game loop — rendered with **Skia**, no third-party game engine.
 
-## The core idea (standalone game loop)
+| | |
+|--|--|
+| **Platforms** | Windows 64-bit · macOS · iOS |
+| **IDE** | Delphi 13 Florence (or newer) with integrated Skia |
+| **License** | [MIT](LICENSE) |
 
-The reusable kernel lives in a **single, independent unit**:
+---
+
+## What you get when you run it
+
+- An atmospheric particle field with orbiting orbs (mouse / touch influences the scene).
+- A **dark stats footer**: FPS, frame time, process CPU, particle counts, platform, and active Skia/FMX backend.
+- A **Preferred FPS** control (30 / 60 / 120) so you can see how the display link and pacing behave on your device.
+- Smooth animation driven by FMX’s **Display Link** (Delphi 13), not a coarse `TTimer`.
+
+Use it as a playable reference for “how do I do a clean frame loop + Skia drawing in FMX?”
+
+---
+
+## Quick start
+
+### 1. Clone (with tests submodule)
+
+```bash
+git clone --recurse-submodules https://github.com/omonien/AetherOrbits.git
+cd AetherOrbits
+```
+
+If you already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+### 2. Open in the IDE
+
+Open **`AetherOrbits.groupproj`** in RAD Studio / Delphi 13.
+
+- App project: `src/AetherOrbits.dproj`
+- Tests: `tests/AetherOrbits.Tests.dproj`
+
+Select a platform (e.g. **Win64**, **OSX64**, **iOS Device 64-bit**) and run.
+
+### 3. Command-line build (Windows)
+
+```powershell
+.\build-scripts\DelphiBuildDPROJ.ps1 -Project src\AetherOrbits.dproj -Platform Win64 -Config Debug
+.\build-scripts\DelphiBuildDPROJ.ps1 -Project tests\AetherOrbits.Tests.dproj -Platform Win64 -Config Debug
+.\build\Win64\Debug\AetherOrbits.Tests.exe
+```
+
+Output goes to `build/<Platform>/<Config>/` (git-ignored).
+
+---
+
+## Using the demo
+
+| Control | Action |
+|---------|--------|
+| **Mouse / touch move** | Influences particles near the pointer |
+| **Preferred FPS** (top bar) | Request 30, 60, or 120 frames per second |
+| **Stats footer** | Live FPS, frame ms, Preferred value, CPU, platform, render backend |
+
+### Preferred FPS — what to expect
+
+| Setting | Typical result |
+|---------|----------------|
+| **30** | ~30 FPS (paced; useful to save work or compare) |
+| **60** | Default — matches most panels and FMX’s default preferred rate |
+| **120** | Up to 120 only on ProMotion / 120 Hz displays; otherwise capped by the panel |
+
+On **iPhone 16 (non-Pro)** the panel is **60 Hz** — choosing 120 will not go above ~60.  
+On **Windows**, the OS display link often stays at monitor refresh; the demo **paces** the game loop so Preferred 30 still measures ~30 FPS in the footer.
+
+---
+
+## Platforms & backends
+
+| Platform | Notes |
+|----------|--------|
+| **Windows 64** | Skia via OpenGL (or GPU path) when PreferRaster is off at startup |
+| **macOS** | Metal enabled for Skia GPU (`GlobalUseMetal`) |
+| **iOS** | Same Display Link / Metal path; responsive stats HUD for narrow screens |
+
+The footer’s **Backend** line shows what is actually active (e.g. Skia Metal, Skia OpenGL, Skia Raster).
+
+Startup flags that matter are set in `src/AetherOrbits.dpr` (Skia on; Windows PreferRaster off; Metal on for Apple). Details and pitfalls: **[docs/FMX-Skia-Gotchas.md](docs/FMX-Skia-Gotchas.md)**.
+
+---
+
+## Reuse the game loop in your own app
+
+The frame clock is a **single, standalone unit** with no dependency on the demo scene or Skia:
 
 **[`src/AetherOrbits.GameLoop.pas`](src/AetherOrbits.GameLoop.pas)**
 
-It has **no dependency** on the demo scene, Skia, or the main form — only on
-`TAnimation` (`FMX.Ani`). You can copy that unit into any FMX project as-is.
+1. Copy the unit into your FMX project.  
+2. Create a `TGameLoop`, assign `OnUpdate` / `OnRender`.  
+3. Call `StartLoop` when the form is shown (`Root` must be set — parent the loop to the form).
 
-See also [`docs/GameLoop.md`](docs/GameLoop.md).
+Deep dive: **[docs/GameLoop.md](docs/GameLoop.md)**  
+(Display Link vs Preferred FPS vs fixed simulation timestep, Windows DWM pacing, etc.)
 
-### Why `ProcessAnimation` is the point
-
-From **Delphi 13**, Embarcadero drives FMX animations through the platform
-**Display Link Service** (display refresh / VSync). For every running
-`TAnimation`, the framework calls the virtual method
-
-```pascal
-procedure ProcessAnimation; override;
-```
-
-on each display-link tick.
-
-That is the **official, framework-native hook** for continuous per-frame work:
-
-| Approach | Problem |
-|----------|---------|
-| `TTimer` | Coarse resolution, not VSync-aligned, drift |
-| Background thread + `TThread.Queue` | Extra complexity, still need UI-thread paint |
-| `Application.OnIdle` | Starves under load, not display-paced |
-| **`TAnimation.ProcessAnimation` (D13)** | Inside FMX’s Display Link pipeline — VSync-paced, no third-party loop |
-
-So the central idea of this project is deliberately small:
-
-1. **Subclass `TAnimation`.**
-2. **Override `ProcessAnimation`** — that is the integration point Embarcadero gives you.
-3. Inside the override, apply a classic **fixed timestep** (update N times with a
-   constant δt, render once per tick).
-
-Everything else in the repo (orbs, particles, Skia) is only a **demo** of wiring
-`OnUpdate` / `OnRender`. The loop unit does not know about any of it.
-
-## Where Skia fits (and where it does not)
-
-**Skia is the rendering layer of this demo — not the game loop.**
-
-It is easy to treat “FMX + Skia” as a black box that somehow “does games for
-you”. That is **not** how this project is structured:
-
-| Concern | Who owns it | Skia involved? |
-|---------|-------------|----------------|
-| Frame clock / VSync | `TGameLoop` → `ProcessAnimation` (FMX Display Link) | **No** |
-| Simulation / physics | `TAetherScene.Update` | **No** |
-| Drawing commands | `TAetherSceneRenderer` → `ISkCanvas` / `ISkPaint` | **Yes** |
-| GPU/CPU raster backend | Integrated Skia under FMX (`GlobalUseSkia`) | **Yes** (infrastructure) |
-
-### Why use Skia then?
-
-Skia (integrated in modern Delphi / FMX) is an **open, efficient 2D graphics
-engine** with real rendering backends — not a closed game-loop product:
-
-- **Backends** such as raster (CPU), OpenGL, Metal, Vulkan (platform-dependent)
-  sit under the same Skia API (`ISkCanvas`, shaders, paints, paths).
-- You issue **explicit draw calls** (circles, gradients, custom shaders) — full
-  control over what is painted each frame.
-- With `GlobalUseSkia := True`, FMX can route control painting through Skia’s
-  pipeline, so the UI stack and custom paint boxes share the **same efficient
-  backend** instead of the older FMX canvas path alone.
-- Controls like `TSkPaintBox` expose an `OnDraw(… ISkCanvas …)` callback: you
-  get a Skia canvas bound to the surface, not a hidden “engine tick”.
-
-So in this demo:
-
-1. **Display Link** decides *when* a frame happens (`ProcessAnimation`).
-2. **Scene** decides *what* the world state is (`Update`).
-3. **Skia** decides *how pixels are produced* (`Draw` on `ISkCanvas`) via its
-   backends — transparent, replaceable drawing technology, **orthogonal** to the
-   loop.
-
-You could swap Skia for another painter and keep `TGameLoop` unchanged. You
-could use Skia in a static form with no game loop. They compose; neither
-absorbs the other.
-
-## Architecture (SoC)
-
-| Layer | Unit | Responsibility |
-|-------|------|----------------|
-| **Timing (standalone)** | `AetherOrbits.GameLoop` | VSync via `ProcessAnimation`; fixed timestep; callbacks only |
-| Simulation | `AetherOrbits.Scene` | Orbs, particles, mouse forces — **no UI, no Skia** |
-| Rendering | `AetherOrbits.Scene.Renderer` | Explicit Skia draw of scene state — **no simulation, no loop** |
-| UI shell | `AetherOrbits.Main.Form` | Form + `TSkPaintBox`; wires loop ↔ scene ↔ redraw |
-
-```
-Display Link (FMX D13)
-        │
-        ▼
-TGameLoop.ProcessAnimation   ◄── core override (no Skia)
-        │
-        ├── OnUpdate(δt)  →  TAetherScene.Update      (no Skia)
-        └── OnRender      →  TSkPaintBox.Redraw
-                                    │
-                                    ▼ OnDraw
-                         TAetherSceneRenderer.Draw
-                         (ISkCanvas → Skia backends)
-```
+---
 
 ## Project layout
 
 ```
 AetherOrbits/
-├── src/
-│   ├── AetherOrbits.dpr / .dproj
-│   ├── AetherOrbits.GameLoop.pas      ★ standalone kernel (copy-friendly)
-│   ├── AetherOrbits.Scene.pas
-│   ├── AetherOrbits.Scene.Renderer.pas
-│   └── AetherOrbits.Main.Form.pas / .fmx
-├── tests/                          # DUnitX (loop + scene + form smoke)
-├── build/                          # Output (git-ignored)
-├── build-scripts/DelphiBuildDPROJ.ps1
-├── libs/DUnitX/                    # Git submodule
+├── src/                    # Demo app (GameLoop, Scene, Skia renderer, form, HUD)
+├── tests/                  # DUnitX unit + form smoke tests
+├── build-scripts/          # DelphiBuildDPROJ.ps1
 ├── docs/
-│   ├── GameLoop.md                 # Loop kernel deep-dive
+│   ├── GameLoop.md         # Loop design & FPS concepts
+│   ├── FMX-Skia-Gotchas.md # Platform/Skia gotchas
 │   └── Delphi Style Guide EN.md
+├── libs/DUnitX/            # Git submodule
 ├── AetherOrbits.groupproj
-└── LICENSE                         # MIT
+├── LICENSE                 # MIT
+└── README.md
 ```
+
+### Architecture (short)
+
+| Layer | Unit | Role |
+|-------|------|------|
+| Timing | `AetherOrbits.GameLoop` | Display Link + fixed timestep + Preferred pacing |
+| Simulation | `AetherOrbits.Scene` | Orbs / particles — no UI, no Skia |
+| Drawing | `AetherOrbits.Scene.Renderer` | Skia paint of scene state |
+| Diagnostics | `AetherOrbits.SystemInfo` | Platform, backend, CPU samples |
+| HUD | `AetherOrbits.Stats.Hud` | Footer text + Skia overlay |
+| Shell | `AetherOrbits.Main.Form` | Form, Preferred bar, paint box wiring |
+
+Skia draws pixels; it does **not** own the frame clock. The loop does not know about orbs or Skia.
+
+---
 
 ## Requirements
 
-- Delphi 13 Florence (or newer) — Display Link–driven `TAnimation`
-- Integrated Skia — demo rendering / backends only; **not** required by `GameLoop`
-- Windows 64-bit (default target)
-- macOS 64-bit (OSX64) enabled in the project
+- **Delphi 13** (Florence) or newer — Display Link–driven `TAnimation`
+- **Integrated Skia** for the demo renderer (not required by `GameLoop` itself)
+- **Git** with submodule support for DUnitX tests
+- Optional: macOS / iOS deploy targets and signing as usual for FMX
 
-## Build
+---
 
-```powershell
-.\build-scripts\DelphiBuildDPROJ.ps1 -ProjectFile "src\AetherOrbits.dproj" -Platform Win64 -Config Debug
-.\build-scripts\DelphiBuildDPROJ.ps1 -ProjectFile "tests\AetherOrbits.Tests.dproj" -Platform Win64 -Config Debug
-.\build\Win64\Debug\AetherOrbits.Tests.exe
-```
+## Documentation
 
-Or open `AetherOrbits.groupproj` in the IDE.
+| Doc | Audience |
+|-----|----------|
+| [docs/GameLoop.md](docs/GameLoop.md) | Reusing / understanding `TGameLoop` |
+| [docs/FMX-Skia-Gotchas.md](docs/FMX-Skia-Gotchas.md) | Metal, PreferRaster, Root, HUD under Skia |
+| [docs/Delphi Style Guide EN.md](docs/Delphi%20Style%20Guide%20EN.md) | Coding conventions used in this repo |
 
-
-
-## FMX + Skia quirks (read this on macOS)
-
-Hybrid FMX controls + full-window Skia has sharp edges on **every** platform:
-Display Link `Root`, Windows **`GlobalUseSkiaRasterWhenAvailable` default True**, macOS **`GlobalUseMetal` default False**, and FMX labels
-vanishing over a Skia paint box. **Self-rendered game views** (draw world + HUD
-in one Skia pass) avoid most of the UI compositing issues.
-
-Full write-up: **[`docs/FMX-Skia-Gotchas.md`](docs/FMX-Skia-Gotchas.md)**
+---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Copyright © 2026 Olaf Monien. Released under the **[MIT License](LICENSE)**.
