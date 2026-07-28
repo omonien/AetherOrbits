@@ -123,8 +123,8 @@
         <DCCReference Include="AetherOrbits.GameLoop.pas"/>
         <DCCReference Include="AetherOrbits.Scene.pas"/>
         <DCCReference Include="AetherOrbits.Scene.Renderer.pas"/>
-        <DCCReference Include="AetherOrbits.RuntimeInfo.pas"/>
-        <DCCReference Include="AetherOrbits.ProcessCpu.pas"/>
+        <DCCReference Include="AetherOrbits.SystemInfo.pas"/>
+        <DCCReference Include="AetherOrbits.Stats.Hud.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

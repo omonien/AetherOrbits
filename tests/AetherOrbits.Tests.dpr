@@ -26,13 +26,13 @@ uses
   AetherOrbits.GameLoop in '..\src\AetherOrbits.GameLoop.pas',
   AetherOrbits.Scene in '..\src\AetherOrbits.Scene.pas',
   AetherOrbits.Scene.Renderer in '..\src\AetherOrbits.Scene.Renderer.pas',
-  AetherOrbits.RuntimeInfo in '..\src\AetherOrbits.RuntimeInfo.pas',
-  AetherOrbits.ProcessCpu in '..\src\AetherOrbits.ProcessCpu.pas',
+  AetherOrbits.SystemInfo in '..\src\AetherOrbits.SystemInfo.pas',
+  AetherOrbits.Stats.Hud in '..\src\AetherOrbits.Stats.Hud.pas',
   AetherOrbits.Main.Form in '..\src\AetherOrbits.Main.Form.pas' {FormMain},
   AetherOrbits.GameLoop.Tests in 'AetherOrbits.GameLoop.Tests.pas',
   AetherOrbits.Scene.Tests in 'AetherOrbits.Scene.Tests.pas',
   AetherOrbits.Main.Form.Smoke in 'AetherOrbits.Main.Form.Smoke.pas',
-  AetherOrbits.RuntimeInfo.Tests in 'AetherOrbits.RuntimeInfo.Tests.pas';
+  AetherOrbits.SystemInfo.Tests in 'AetherOrbits.SystemInfo.Tests.pas';
 
 var
   LRunner: ITestRunner;

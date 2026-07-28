@@ -1,0 +1,58 @@
+﻿/// <summary>
+/// AetherOrbits.SystemInfo.Tests
+/// </summary>
+///
+/// <copyright>
+/// Copyright © 2026 Olaf Monien
+/// Licensed under MIT
+/// </copyright>
+
+unit AetherOrbits.SystemInfo.Tests;
+
+interface
+
+uses
+  System.SysUtils,
+  DUnitX.TestFramework,
+  AetherOrbits.SystemInfo;
+
+type
+  [TestFixture]
+  TSystemInfoTests = class
+  public
+    [Test]
+    procedure HostPlatformLabel_IsNonEmpty;
+    [Test]
+    procedure RenderBackendLabel_IsNonEmpty;
+    [Test]
+    procedure LogicalProcessorCount_AtLeastOne;
+    [Test]
+    procedure CpuSampler_FirstSamplePrimes;
+  end;
+
+implementation
+
+procedure TSystemInfoTests.HostPlatformLabel_IsNonEmpty;
+begin
+  Assert.IsTrue(GetHostPlatformLabel <> '', 'Platform label empty');
+end;
+
+procedure TSystemInfoTests.RenderBackendLabel_IsNonEmpty;
+begin
+  Assert.IsTrue(GetActiveRenderBackendLabel <> '', 'Backend label empty');
+end;
+
+procedure TSystemInfoTests.LogicalProcessorCount_AtLeastOne;
+begin
+  Assert.IsTrue(GetLogicalProcessorCount >= 1);
+end;
+
+procedure TSystemInfoTests.CpuSampler_FirstSamplePrimes;
+var
+  LSampler: TProcessCpuSampler;
+begin
+  LSampler.Reset;
+  Assert.AreEqual(0.0, LSampler.Sample, 1E-9, 'First sample primes and returns 0');
+end;
+
+end.

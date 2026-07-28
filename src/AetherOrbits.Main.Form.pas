@@ -4,10 +4,8 @@
 /// </summary>
 ///
 /// <remarks>
-/// Owns UI (form + Skia paint box) and wires the standalone TGameLoop to
-/// TAetherScene. The stats footer is drawn as a Skia overlay inside the paint
-/// box so it stays visible under Metal (FMX TLabel/TRectangle can be covered
-/// or fail to composite when GlobalUseSkia + Metal is active).
+/// Wires TGameLoop to TAetherScene and a TSkPaintBox. System diagnostics live
+/// in AetherOrbits.SystemInfo; the stats overlay is AetherOrbits.Stats.Hud.
 /// </remarks>
 ///
 /// <copyright>
@@ -25,7 +23,6 @@ uses
   System.Types,
   System.UITypes,
   System.Classes,
-  System.Diagnostics,
   System.Math,
   // FMX
   FMX.Types,
@@ -39,38 +36,11 @@ uses
   AetherOrbits.GameLoop,
   AetherOrbits.Scene,
   AetherOrbits.Scene.Renderer,
-  AetherOrbits.RuntimeInfo,
-  AetherOrbits.ProcessCpu;
+  AetherOrbits.Stats.Hud;
 
 type
   /// <summary>
-  /// Rolling FPS / frame-time samples for the stats footer.
-  /// </summary>
-  TFrameStats = record
-    Stopwatch: TStopwatch;
-    FrameCount: Integer;
-    WindowStart: Double;
-    LastRenderTime: Double;
-    Fps: Integer;
-    FrameMs: Double;
-    RefreshTimer: Double;
-    PlatformLabel: string;
-    BackendLabel: string;
-    CpuPercentOfOneCore: Double;
-    LogicalCpuCount: Integer;
-    CpuSampler: TProcessCpuSampler;
-    procedure Reset;
-    procedure CaptureEnvironment;
-    procedure SampleCpu;
-    procedure OnFrameRendered;
-    function ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
-    function FormatLine(
-      const AParticleCount, AOrbCount: Integer;
-      const ASimTime: Double): string;
-  end;
-
-  /// <summary>
-  /// Main demo window: game loop + scene + Skia paint box (with HUD stats).
+  /// Main demo window: game loop + scene + Skia paint box + stats HUD.
   /// </summary>
   TFormMain = class(TForm)
     procedure FormCreate(ASender: TObject);
@@ -82,8 +52,7 @@ type
     FPaintBox: TSkPaintBox;
     FGameLoop: TGameLoop;
     FScene: TAetherScene;
-    FFrameStats: TFrameStats;
-    FStatsText: string;
+    FStatsHud: TStatsHudModel;
 
     procedure CreateUi;
     function GetSceneViewportHeight: Single;
@@ -96,7 +65,6 @@ type
       const ACanvas: ISkCanvas;
       const ADest: TRectF;
       const AOpacity: Single);
-    procedure DrawStatsOverlay(const ACanvas: ISkCanvas; const ADest: TRectF);
     procedure UpdateStatsFooter;
   end;
 
@@ -107,115 +75,20 @@ implementation
 
 {$R *.fmx}
 
-const
-  cStatsPanelHeight = 44;
-  cStatsRefreshInterval = 0.25;
-  cStatsBarColor = $FF0B1220;
-  cStatsTextColor = $FFE8EEF8;
-  cStatsFontSize = 12;
-  cStatsTextPadX = 12;
-  cStatsLine1Y = 16;
-  cStatsLine2Y = 34;
-  scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s' + sLineBreak +
-    'Platform: %s  |  Backend: %s';
-
-{ TFrameStats }
-
-procedure TFrameStats.Reset;
-begin
-  Stopwatch := TStopwatch.StartNew;
-  FrameCount := 0;
-  WindowStart := 0;
-  LastRenderTime := 0;
-  Fps := 0;
-  FrameMs := 0;
-  RefreshTimer := 0;
-  PlatformLabel := '';
-  BackendLabel := '';
-  CpuPercentOfOneCore := 0;
-  LogicalCpuCount := GetLogicalProcessorCount;
-  CpuSampler.Reset;
-end;
-
-procedure TFrameStats.CaptureEnvironment;
-begin
-  PlatformLabel := GetHostPlatformLabel;
-  BackendLabel := GetActiveRenderBackendLabel;
-end;
-
-
-procedure TFrameStats.SampleCpu;
-begin
-  CpuPercentOfOneCore := CpuSampler.Sample;
-  if LogicalCpuCount < 1 then
-  begin
-    LogicalCpuCount := 1;
-  end;
-end;
-
-procedure TFrameStats.OnFrameRendered;
-var
-  LNow: Double;
-begin
-  LNow := Stopwatch.Elapsed.TotalSeconds;
-  if LastRenderTime > 0 then
-  begin
-    FrameMs := (LNow - LastRenderTime) * 1000.0;
-  end;
-  LastRenderTime := LNow;
-
-  Inc(FrameCount);
-  if (LNow - WindowStart) >= 1.0 then
-  begin
-    Fps := FrameCount;
-    FrameCount := 0;
-    WindowStart := LNow;
-  end;
-end;
-
-function TFrameStats.ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
-begin
-  RefreshTimer := RefreshTimer + ADeltaTime;
-  Result := RefreshTimer >= AInterval;
-  if Result then
-  begin
-    RefreshTimer := 0;
-  end;
-end;
-
-function TFrameStats.FormatLine(
-  const AParticleCount, AOrbCount: Integer;
-  const ASimTime: Double): string;
-var
-  LOfMachine: Double;
-begin
-  if LogicalCpuCount < 1 then
-  begin
-    LogicalCpuCount := 1;
-  end;
-  LOfMachine := CpuPercentOfOneCore / LogicalCpuCount;
-  Result := Format(scStatsFormat,
-    [Fps, FrameMs, CpuPercentOfOneCore, LOfMachine, LogicalCpuCount,
-     AParticleCount, AOrbCount, ASimTime, PlatformLabel, BackendLabel]);
-end;
-
 { TFormMain }
 
 procedure TFormMain.CreateUi;
 begin
-  // Full-client Skia surface; stats are drawn as an overlay (Metal-safe)
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := Self;
   FPaintBox.Align := TAlignLayout.Client;
   FPaintBox.HitTest := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
-  FStatsText := 'FPS: -';
 end;
 
 function TFormMain.GetSceneViewportHeight: Single;
 begin
-  Result := Max(1, FPaintBox.Height - cStatsPanelHeight);
+  Result := Max(1, FPaintBox.Height - cStatsHudHeight);
 end;
 
 procedure TFormMain.SyncViewportFromPaintBox;
@@ -244,7 +117,7 @@ procedure TFormMain.FormCreate(ASender: TObject);
 begin
   FScene := TAetherScene.Create;
   CreateUi;
-  FFrameStats.Reset;
+  FStatsHud.Reset;
 
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
@@ -260,7 +133,7 @@ begin
     FGameLoop.StartLoop;
   end;
 
-  FFrameStats.CaptureEnvironment;
+  FStatsHud.CaptureEnvironment;
   UpdateStatsFooter;
 end;
 
@@ -293,7 +166,7 @@ procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
 begin
   FScene.Update(ADeltaTime);
 
-  if FFrameStats.ShouldRefreshFooter(ADeltaTime, cStatsRefreshInterval) then
+  if FStatsHud.ShouldRefresh(ADeltaTime) then
   begin
     UpdateStatsFooter;
   end;
@@ -301,7 +174,7 @@ end;
 
 procedure TFormMain.DoGameRender;
 begin
-  FFrameStats.OnFrameRendered;
+  FStatsHud.OnFrameRendered;
   FPaintBox.Redraw;
 end;
 
@@ -312,60 +185,10 @@ begin
     Exit;
   end;
 
-  FFrameStats.SampleCpu;
-  FStatsText := FFrameStats.FormatLine(
+  FStatsHud.RefreshText(
     FScene.ParticleCount,
     FScene.OrbCount,
     FScene.Time);
-end;
-
-procedure TFormMain.DrawStatsOverlay(const ACanvas: ISkCanvas; const ADest: TRectF);
-var
-  LBar: TRectF;
-  LPaint: ISkPaint;
-  LFont: ISkFont;
-  LLines: TStringList;
-  LY: Single;
-  i: Integer;
-begin
-  LBar := TRectF.Create(ADest.Left, ADest.Bottom - cStatsPanelHeight, ADest.Right, ADest.Bottom);
-
-  LPaint := TSkPaint.Create;
-  LPaint.AntiAlias := True;
-  LPaint.Style := TSkPaintStyle.Fill;
-  LPaint.Color := cStatsBarColor;
-  ACanvas.DrawRect(LBar, LPaint);
-
-  // Do not use SplitString(..., sLineBreak): it treats the delimiter as a set of
-  // characters, so CRLF yields an empty middle line and drops the backend row.
-  LLines := TStringList.Create;
-  try
-    LLines.Text := FStatsText;
-    LFont := TSkFont.Create(TSkTypeface.MakeDefault, cStatsFontSize);
-    LPaint.Color := cStatsTextColor;
-
-    for i := 0 to Min(1, LLines.Count - 1) do
-    begin
-      if i = 0 then
-        LY := LBar.Top + cStatsLine1Y
-      else
-        LY := LBar.Top + cStatsLine2Y;
-
-      if LLines[i] <> '' then
-      begin
-        // Re-assert fill color each line (some Skia backends keep paint state)
-        LPaint.Color := cStatsTextColor;
-        ACanvas.DrawSimpleText(
-          LLines[i],
-          LBar.Left + cStatsTextPadX,
-          LY,
-          LFont,
-          LPaint);
-      end;
-    end;
-  finally
-    LLines.Free;
-  end;
 end;
 
 procedure TFormMain.DoPaintBoxDraw(
@@ -376,11 +199,10 @@ procedure TFormMain.DoPaintBoxDraw(
 var
   LSceneDest: TRectF;
 begin
-  // Scene in the upper region; stats HUD in the bottom strip (same Metal surface)
   LSceneDest := ADest;
-  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - cStatsPanelHeight);
+  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - cStatsHudHeight);
   TAetherSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
-  DrawStatsOverlay(ACanvas, ADest);
+  TStatsHudPainter.Draw(ACanvas, ADest, FStatsHud.Text);
 end;
 
 end.

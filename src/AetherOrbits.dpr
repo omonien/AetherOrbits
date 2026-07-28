@@ -27,8 +27,8 @@ uses
   AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas',
   AetherOrbits.Scene in 'AetherOrbits.Scene.pas',
   AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas',
-  AetherOrbits.RuntimeInfo in 'AetherOrbits.RuntimeInfo.pas',
-  AetherOrbits.ProcessCpu in 'AetherOrbits.ProcessCpu.pas';
+  AetherOrbits.SystemInfo in 'AetherOrbits.SystemInfo.pas',
+  AetherOrbits.Stats.Hud in 'AetherOrbits.Stats.Hud.pas';
 
 {$R *.res}
 
@@ -41,8 +41,7 @@ begin
 
   // macOS: GlobalUseMetal defaults to False (iOS defaults to True).
   // TMtlCanvas is only offered to Skia when GlobalUseMetal is True; otherwise
-  // the app falls back to Skia Raster (CPU) — typically single-digit FPS for
-  // full-window particle demos (as observed on Intel Mac via PAServer).
+  // the app falls back to Skia Raster (CPU).
 {$IF Defined(MACOS) or Defined(IOS)}
   GlobalUseMetal := True;
 {$ENDIF}
