@@ -21,6 +21,15 @@
 /// TTimer, a busy thread, Application.OnIdle hacks, or third-party loops.
 /// </para>
 /// <para>
+/// <b>FMX requirement:</b> <c>TAnimation.Start</c> only subscribes to the
+/// Display Link when <c>Root &lt;&gt; nil</c>. If <c>Root</c> is nil (no parent
+/// chain to a form), FMX runs a one-shot "immediate" animation and stops —
+/// the scene freezes after the first paint. This unit therefore parents
+/// itself to the owner when the owner is a <c>TFmxObject</c> (typically the
+/// form). Call <c>StartLoop</c> when the form is visible (e.g. OnShow);
+/// starting while the parent control is not visible is a no-op in FMX.
+/// </para>
+/// <para>
 /// Everything else in this unit (stopwatch, accumulator, fixed timestep,
 /// max-frame clamp) is built <i>on top of</i> that override. The override
 /// is the integration point Embarcadero gives us; the fixed-timestep
@@ -65,7 +74,8 @@ type
   /// Standalone drop-in: no coupling to any particular scene or renderer.
   /// The essential mechanism is the <c>ProcessAnimation</c> override, which
   /// the Delphi 13 FMX Display Link Service invokes on each VSync-aligned
-  /// tick. See the unit remarks for the full rationale.
+  /// tick. Requires a parent in the FMX tree (Root &lt;&gt; nil) so Start
+  /// subscribes to Display Link instead of the immediate one-shot path.
   /// </remarks>
   TGameLoop = class(TAnimation)
   private
@@ -95,10 +105,15 @@ type
     /// </remarks>
     procedure ProcessAnimation; override;
   public
+    /// <summary>
+    /// Creates the loop. If AOwner is a TFmxObject (e.g. the form), sets
+    /// Parent so Root is available for Display Link subscription.
+    /// </summary>
     constructor Create(AOwner: TComponent); override;
 
     /// <summary>
-    /// Starts the loop (resets timing, sets Loop, starts the animation).
+    /// Starts the loop (resets timing, starts the animation / Display Link).
+    /// Prefer calling when the host form is visible (OnShow).
     /// </summary>
     procedure StartLoop;
 
@@ -149,6 +164,13 @@ begin
   FLastTime := 0;
   FStopwatch := TStopwatch.StartNew;
 
+  // TAnimation.Start only uses Display Link when Root <> nil. Without Parent,
+  // Root is nil and FMX runs a one-shot "immediate" animation then stops.
+  if AOwner is TFmxObject then
+  begin
+    Parent := TFmxObject(AOwner);
+  end;
+
   // Loop + huge Duration keep TAnimation "running" so Display Link keeps
   // calling ProcessAnimation; Duration is not the game-loop period.
   Loop := True;
@@ -161,12 +183,23 @@ begin
   FStopwatch.Start;
   FLastTime := 0;
   FAccumulator := 0;
-  Start; // registers with FMX animation / Display Link
+
+  // Idempotent restart: Stop unsubscribes Display Link if already running
+  if Running then
+  begin
+    Stop;
+  end;
+
+  // Registers with FMX animation / Display Link (needs Root <> nil)
+  Start;
 end;
 
 procedure TGameLoop.StopLoop;
 begin
-  Stop;
+  if Running then
+  begin
+    Stop;
+  end;
 end;
 
 procedure TGameLoop.ProcessAnimation;

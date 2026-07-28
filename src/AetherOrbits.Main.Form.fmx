@@ -12,5 +12,6 @@
   OnDestroy = FormDestroy
   OnMouseMove = FormMouseMove
   OnResize = FormResize
+  OnShow = FormShow
   DesignerMasterStyle = 0
 end

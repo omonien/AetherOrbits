@@ -8,6 +8,8 @@
 /// TGameLoop (AetherOrbits.GameLoop) knows nothing about this form or the scene;
 /// its core is the ProcessAnimation override (FMX Display Link / Delphi 13).
 /// Simulation lives in AetherOrbits.Scene; drawing in AetherOrbits.Scene.Renderer.
+/// The game loop is started in FormShow so the form is visible and Root is valid
+/// (TAnimation.Start no-ops or one-shots if Root is nil / parent not visible).
 /// </remarks>
 ///
 /// <copyright>
@@ -45,6 +47,7 @@ type
   TFormMain = class(TForm)
     procedure FormCreate(ASender: TObject);
     procedure FormDestroy(ASender: TObject);
+    procedure FormShow(ASender: TObject);
     procedure FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
     procedure FormResize(ASender: TObject);
   private
@@ -82,10 +85,19 @@ begin
 
   FScene.Initialize(ClientWidth, ClientHeight);
 
+  // Parent is set to the form inside TGameLoop.Create (Display Link needs Root)
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
   FGameLoop.OnRender := DoGameRender;
-  FGameLoop.StartLoop;
+  // StartLoop in FormShow — form must be visible for TAnimation.Start
+end;
+
+procedure TFormMain.FormShow(ASender: TObject);
+begin
+  if Assigned(FGameLoop) and not FGameLoop.Running then
+  begin
+    FGameLoop.StartLoop;
+  end;
 end;
 
 procedure TFormMain.FormDestroy(ASender: TObject);

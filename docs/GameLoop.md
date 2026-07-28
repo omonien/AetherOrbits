@@ -62,3 +62,15 @@ section *Where Skia fits*), but only for **drawing**:
 `OnRender` in this unit is deliberately abstract — typically “invalidate a
 surface”. Whether that surface is painted with Skia, the classic FMX canvas, or
 something else is the consumer’s choice and stays outside this unit.
+
+## FMX pitfall: `Root` and when to start
+
+`TAnimation.Start` (FMX.Ani) only subscribes to the **Display Link** when:
+
+1. `Root <> nil` (animation is in the FMX object tree — set `Parent` to the form), and  
+2. Duration is not treated as “immediate”, and  
+3. If `Parent` is an `IControl`, that control is **Visible**.
+
+If `Root = nil`, FMX runs a **one-shot immediate** animation (`ProcessAnimation` once) and sets `Running := False`. Symptom: first paint looks correct, then everything freezes.
+
+`TGameLoop.Create` parents itself to the owner when the owner is a `TFmxObject`. Call `StartLoop` from **OnShow** (or after the form is visible), not only from OnCreate.

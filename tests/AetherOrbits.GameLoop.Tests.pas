@@ -19,6 +19,7 @@ uses
   // Test
   DUnitX.TestFramework,
   // Own
+  FMX.Forms,
   AetherOrbits.GameLoop;
 
 type
@@ -55,6 +56,8 @@ type
     procedure ProcessAnimation_ClampsLargeFrameTime;
     [Test]
     procedure ProcessAnimation_InvokesRenderOncePerTick;
+    [Test]
+    procedure Create_WithFmxOwner_SetsParent;
   end;
 
 implementation
@@ -156,6 +159,26 @@ begin
     Assert.AreEqual(2, FRenderCount, 'OnRender once per Tick call');
   finally
     FLoop.StopLoop;
+  end;
+end;
+
+procedure TGameLoopTests.Create_WithFmxOwner_SetsParent;
+var
+  LForm: TForm;
+  LLoop: TGameLoop;
+begin
+  // Regression: without Parent, TAnimation.Start uses the immediate path (Root=nil)
+  // and the Display Link never drives ProcessAnimation — scene freezes after first paint.
+  LForm := TForm.CreateNew(nil);
+  try
+    LLoop := TGameLoop.Create(LForm);
+    try
+      Assert.AreSame(LForm, LLoop.Parent, 'GameLoop must parent to FMX owner for Root/Display Link');
+    finally
+      LLoop.Free;
+    end;
+  finally
+    LForm.Free;
   end;
 end;
 
