@@ -4,6 +4,8 @@ object FormMain: TFormMain
   Caption = 'Aether Orbits - FMX + Skia Game Loop Demo'
   ClientHeight = 720
   ClientWidth = 1280
+  Fill.Kind = Solid
+  Fill.Color = xFF1A1A24
   Position = ScreenCenter
   FormFactor.Width = 1920
   FormFactor.Height = 1080
@@ -16,16 +18,21 @@ object FormMain: TFormMain
   DesignerMasterStyle = 0
   object PanelPreferred: TPanel
     Align = Top
+    Position.X = 0.000000000000000000
+    Position.Y = 0.000000000000000000
     Size.Width = 1280.000000000000000000
-    Size.Height = 44.000000000000000000
+    Size.Height = 48.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
     object LabelPreferred: TLabel
       Align = Left
       StyledSettings = [Family, Style]
-      Size.Width = 120.000000000000000000
-      Size.Height = 44.000000000000000000
+      Position.X = 0.000000000000000000
+      Position.Y = 0.000000000000000000
+      Size.Width = 130.000000000000000000
+      Size.Height = 48.000000000000000000
       Size.PlatformDefault = False
+      TextSettings.FontColor = xFFE8EEF8
       TextSettings.HorzAlign = Center
       TextSettings.VertAlign = Center
       Text = 'Preferred FPS'
@@ -33,15 +40,17 @@ object FormMain: TFormMain
     end
     object LayoutPreferredRadios: TLayout
       Align = Client
-      Size.Width = 1160.000000000000000000
-      Size.Height = 44.000000000000000000
+      Size.Width = 1150.000000000000000000
+      Size.Height = 48.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 1
       object RadioPreferred30: TRadioButton
         Align = Left
         GroupName = 'PreferredFps'
-        Size.Width = 72.000000000000000000
-        Size.Height = 44.000000000000000000
+        Position.X = 0.000000000000000000
+        Position.Y = 0.000000000000000000
+        Size.Width = 80.000000000000000000
+        Size.Height = 48.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 0
         Text = '30'
@@ -51,8 +60,10 @@ object FormMain: TFormMain
         Align = Left
         GroupName = 'PreferredFps'
         IsChecked = True
-        Size.Width = 72.000000000000000000
-        Size.Height = 44.000000000000000000
+        Position.X = 80.000000000000000000
+        Position.Y = 0.000000000000000000
+        Size.Width = 80.000000000000000000
+        Size.Height = 48.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 1
         Text = '60'
@@ -61,13 +72,22 @@ object FormMain: TFormMain
       object RadioPreferred120: TRadioButton
         Align = Left
         GroupName = 'PreferredFps'
-        Size.Width = 80.000000000000000000
-        Size.Height = 44.000000000000000000
+        Position.X = 160.000000000000000000
+        Position.Y = 0.000000000000000000
+        Size.Width = 88.000000000000000000
+        Size.Height = 48.000000000000000000
         Size.PlatformDefault = False
         TabOrder = 2
         Text = '120'
         OnChange = RadioPreferredChange
       end
     end
+  end
+  object LayoutScene: TLayout
+    Align = Client
+    Size.Width = 1280.000000000000000000
+    Size.Height = 672.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
   end
 end

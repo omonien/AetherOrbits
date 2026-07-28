@@ -55,6 +55,7 @@ type
     RadioPreferred30: TRadioButton;
     RadioPreferred60: TRadioButton;
     RadioPreferred120: TRadioButton;
+    LayoutScene: TLayout;
     procedure FormCreate(ASender: TObject);
     procedure FormDestroy(ASender: TObject);
     procedure FormShow(ASender: TObject);
@@ -95,11 +96,16 @@ implementation
 
 procedure TFormMain.CreateUi;
 begin
+  // Paint box lives only in LayoutScene (Align=Client). Never parent it to the
+  // form with Align=Client — that can cover PanelPreferred in z-order.
   FPaintBox := TSkPaintBox.Create(Self);
-  FPaintBox.Parent := Self;
+  FPaintBox.Parent := LayoutScene;
   FPaintBox.Align := TAlignLayout.Client;
   FPaintBox.HitTest := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
+
+  PanelPreferred.Visible := True;
+  PanelPreferred.BringToFront;
 end;
 
 function TFormMain.GetSceneViewportHeight: Single;
@@ -247,11 +253,18 @@ begin
 end;
 
 procedure TFormMain.FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
+var
+  LLocal: TPointF;
 begin
-  if Assigned(FScene) then
+  if not Assigned(FScene) or not Assigned(FPaintBox) then
   begin
-    // Mouse Y is form-local; paint box is below the preferred bar.
-    FScene.SetMousePosition(TPointF.Create(AX, AY - PanelPreferred.Height));
+    Exit;
+  end;
+  // Form client → screen → paint-box local (panel sits above LayoutScene).
+  LLocal := FPaintBox.ScreenToLocal(ClientToScreen(TPointF.Create(AX, AY)));
+  if FPaintBox.LocalRect.Contains(LLocal) then
+  begin
+    FScene.SetMousePosition(LLocal);
   end;
 end;
 

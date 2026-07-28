@@ -52,6 +52,13 @@ begin
   try
     Assert.IsNotNull(LForm, 'Form must construct');
     Assert.AreEqual('Aether Orbits - FMX + Skia Game Loop Demo', LForm.Caption);
+
+    // Preferred FPS bar must stream from FMX and stay visible above the scene.
+    Assert.IsNotNull(LForm.PanelPreferred, 'PanelPreferred missing from FMX');
+    Assert.IsNotNull(LForm.LayoutScene, 'LayoutScene missing from FMX');
+    Assert.IsTrue(LForm.PanelPreferred.Visible, 'PanelPreferred must be visible');
+    Assert.IsTrue(LForm.PanelPreferred.Height >= 40, 'PanelPreferred height too small');
+    Assert.IsTrue(LForm.RadioPreferred60.IsChecked, 'Default preferred FPS radio is 60');
   finally
     FreeAndNil(LForm);
   end;
