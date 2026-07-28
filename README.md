@@ -108,6 +108,65 @@ The frame clock is a **single, standalone unit** with no dependency on the demo 
 2. Create a `TGameLoop`, assign `OnUpdate` / `OnRender`.  
 3. Call `StartLoop` when the form is shown (`Root` must be set — parent the loop to the form).
 
+### Code quickstart
+
+```pascal
+uses
+  AetherOrbits.GameLoop;
+
+type
+  TFormMain = class(TForm)
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    FGameLoop: TGameLoop;
+    procedure DoUpdate(const ADeltaTime: Double);
+    procedure DoRender;
+  end;
+
+procedure TFormMain.FormCreate(Sender: TObject);
+begin
+  // Owner = form → Parent is set so Root <> nil (required for Display Link).
+  FGameLoop := TGameLoop.Create(Self);
+  FGameLoop.OnUpdate := DoUpdate;
+  FGameLoop.OnRender := DoRender;
+  // Optional: FGameLoop.FixedTimeStep := 1 / 60;  // simulation step only
+end;
+
+procedure TFormMain.FormShow(Sender: TObject);
+begin
+  // Start when visible — not only in OnCreate.
+  if not FGameLoop.Running then
+    FGameLoop.StartLoop;
+end;
+
+procedure TFormMain.FormDestroy(Sender: TObject);
+begin
+  FGameLoop.StopLoop;
+  // FGameLoop is owned by Self; no Free needed if Owner = Self
+end;
+
+procedure TFormMain.DoUpdate(const ADeltaTime: Double);
+begin
+  // Fixed-timestep logic / physics (ADeltaTime is always FixedTimeStep).
+end;
+
+procedure TFormMain.DoRender;
+begin
+  // Invalidate UI / paint box / GPU surface for this frame.
+  // Invalidate;
+end;
+```
+
+**Pitfalls**
+
+| Issue | Fix |
+|-------|-----|
+| Scene freezes after first frame | `Root` was nil — pass the form as `Owner` (or set `Parent`) and call `StartLoop` from **OnShow** |
+| Preferred FPS 30 does nothing on Windows | Set `GlobalPreferredFramesPerSecond` (and keep `PaceToPreferredFps` true — default); see [docs/GameLoop.md](docs/GameLoop.md) |
+| Simulation too fast/slow | Change **`FixedTimeStep`**, not Preferred FPS |
+
 Deep dive: **[docs/GameLoop.md](docs/GameLoop.md)**  
 (Display Link vs Preferred FPS vs fixed simulation timestep, Windows DWM pacing, etc.)
 
