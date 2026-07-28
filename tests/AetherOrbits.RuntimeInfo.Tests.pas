@@ -33,8 +33,8 @@ var
   LLabel: string;
 begin
   LLabel := GetHostPlatformLabel;
+  // Cross-platform: only require a non-empty label (no Windows-only token)
   Assert.IsTrue(LLabel <> '', 'Platform label empty');
-  Assert.IsTrue(Pos('Win', LLabel) > 0, 'Expected Windows arch token in label');
 end;
 
 procedure TRuntimeInfoTests.RenderBackendLabel_IsNonEmpty;

@@ -40,18 +40,31 @@ uses
 
 function GetArchitectureLabel: string;
 begin
+  // Prefer OS+bitness conditionals that Delphi sets for each target
 {$IF Defined(WIN64)}
   Result := 'Win64';
 {$ELSEIF Defined(WIN32)}
   Result := 'Win32';
+{$ELSEIF Defined(MACOS) and Defined(CPUARM64)}
+  Result := 'macOS ARM64';
+{$ELSEIF Defined(MACOS) and Defined(CPUX64)}
+  Result := 'macOS x64';
 {$ELSEIF Defined(MACOS64) or Defined(OSX64)}
   Result := 'macOS64';
 {$ELSEIF Defined(LINUX64)}
   Result := 'Linux64';
 {$ELSEIF Defined(ANDROID64)}
   Result := 'Android64';
+{$ELSEIF Defined(ANDROID32)}
+  Result := 'Android32';
+{$ELSEIF Defined(IOS64)}
+  Result := 'iOS64';
+{$ELSEIF Defined(IOS32)}
+  Result := 'iOS32';
 {$ELSEIF Defined(IOS)}
   Result := 'iOS';
+{$ELSEIF Defined(ANDROID)}
+  Result := 'Android';
 {$ELSE}
   Result := 'UnknownArch';
 {$ENDIF}
