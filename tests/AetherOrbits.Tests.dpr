@@ -27,6 +27,7 @@ uses
   AetherOrbits.Scene in '..\src\AetherOrbits.Scene.pas',
   AetherOrbits.Scene.Renderer in '..\src\AetherOrbits.Scene.Renderer.pas',
   AetherOrbits.RuntimeInfo in '..\src\AetherOrbits.RuntimeInfo.pas',
+  AetherOrbits.ProcessCpu in '..\src\AetherOrbits.ProcessCpu.pas',
   AetherOrbits.Main.Form in '..\src\AetherOrbits.Main.Form.pas' {FormMain},
   AetherOrbits.GameLoop.Tests in 'AetherOrbits.GameLoop.Tests.pas',
   AetherOrbits.Scene.Tests in 'AetherOrbits.Scene.Tests.pas',

@@ -27,7 +27,8 @@ uses
   AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas',
   AetherOrbits.Scene in 'AetherOrbits.Scene.pas',
   AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas',
-  AetherOrbits.RuntimeInfo in 'AetherOrbits.RuntimeInfo.pas';
+  AetherOrbits.RuntimeInfo in 'AetherOrbits.RuntimeInfo.pas',
+  AetherOrbits.ProcessCpu in 'AetherOrbits.ProcessCpu.pas';
 
 {$R *.res}
 

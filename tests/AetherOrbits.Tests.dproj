@@ -85,6 +85,7 @@
         <DCCReference Include="..\src\AetherOrbits.Scene.pas"/>
         <DCCReference Include="..\src\AetherOrbits.Scene.Renderer.pas"/>
         <DCCReference Include="..\src\AetherOrbits.RuntimeInfo.pas"/>
+        <DCCReference Include="..\src\AetherOrbits.ProcessCpu.pas"/>
         <DCCReference Include="..\src\AetherOrbits.Main.Form.pas">
             <Form>FormMain</Form>
             <FormType>fmx</FormType>

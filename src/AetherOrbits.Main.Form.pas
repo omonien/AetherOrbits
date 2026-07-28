@@ -27,7 +27,6 @@ uses
   System.Classes,
   System.Diagnostics,
   System.Math,
-  System.StrUtils,
   // FMX
   FMX.Types,
   FMX.Controls,
@@ -40,7 +39,8 @@ uses
   AetherOrbits.GameLoop,
   AetherOrbits.Scene,
   AetherOrbits.Scene.Renderer,
-  AetherOrbits.RuntimeInfo;
+  AetherOrbits.RuntimeInfo,
+  AetherOrbits.ProcessCpu;
 
 type
   /// <summary>
@@ -56,8 +56,12 @@ type
     RefreshTimer: Double;
     PlatformLabel: string;
     BackendLabel: string;
+    CpuPercentOfOneCore: Double;
+    LogicalCpuCount: Integer;
+    CpuSampler: TProcessCpuSampler;
     procedure Reset;
     procedure CaptureEnvironment;
+    procedure SampleCpu;
     procedure OnFrameRendered;
     function ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
     function FormatLine(
@@ -113,7 +117,7 @@ const
   cStatsLine1Y = 16;
   cStatsLine2Y = 34;
   scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim time: %.1f s' + sLineBreak +
+    'FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s' + sLineBreak +
     'Platform: %s  |  Backend: %s';
 
 { TFrameStats }
@@ -129,12 +133,25 @@ begin
   RefreshTimer := 0;
   PlatformLabel := '';
   BackendLabel := '';
+  CpuPercentOfOneCore := 0;
+  LogicalCpuCount := GetLogicalProcessorCount;
+  CpuSampler.Reset;
 end;
 
 procedure TFrameStats.CaptureEnvironment;
 begin
   PlatformLabel := GetHostPlatformLabel;
   BackendLabel := GetActiveRenderBackendLabel;
+end;
+
+
+procedure TFrameStats.SampleCpu;
+begin
+  CpuPercentOfOneCore := CpuSampler.Sample;
+  if LogicalCpuCount < 1 then
+  begin
+    LogicalCpuCount := 1;
+  end;
 end;
 
 procedure TFrameStats.OnFrameRendered;
@@ -170,9 +187,17 @@ end;
 function TFrameStats.FormatLine(
   const AParticleCount, AOrbCount: Integer;
   const ASimTime: Double): string;
+var
+  LOfMachine: Double;
 begin
+  if LogicalCpuCount < 1 then
+  begin
+    LogicalCpuCount := 1;
+  end;
+  LOfMachine := CpuPercentOfOneCore / LogicalCpuCount;
   Result := Format(scStatsFormat,
-    [Fps, FrameMs, AParticleCount, AOrbCount, ASimTime, PlatformLabel, BackendLabel]);
+    [Fps, FrameMs, CpuPercentOfOneCore, LOfMachine, LogicalCpuCount,
+     AParticleCount, AOrbCount, ASimTime, PlatformLabel, BackendLabel]);
 end;
 
 { TFormMain }
@@ -287,6 +312,7 @@ begin
     Exit;
   end;
 
+  FFrameStats.SampleCpu;
   FStatsText := FFrameStats.FormatLine(
     FScene.ParticleCount,
     FScene.OrbCount,
