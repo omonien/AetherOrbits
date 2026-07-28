@@ -7,6 +7,10 @@
 /// Contains only game state and fixed-timestep update logic. No UI, no
 /// rendering. The form owns a TAetherScene and drives Update from TGameLoop;
 /// AetherOrbits.Scene.Renderer draws the state via Skia.
+///
+/// Particles live in a dense prefix of the Particles array (indices
+/// 0..ParticleCount-1). Renderers should iterate that range and treat the
+/// array reference as read-only.
 /// </remarks>
 ///
 /// <copyright>
@@ -23,8 +27,7 @@ uses
   System.SysUtils,
   System.Types,
   System.UITypes,
-  System.Math,
-  System.Generics.Collections;
+  System.Math;
 
 type
   /// <summary>
@@ -53,11 +56,23 @@ type
   end;
 
   /// <summary>
+  /// Static orb spawn definition (data table for InitializeOrbs).
+  /// </summary>
+  TOrbDef = record
+    Radius: Single;
+    Speed: Single;
+    BaseSize: Single;
+    Color: TAlphaColor;
+    Phase: Single;
+  end;
+
+  /// <summary>
   /// Demo scene: orbs, particles, and mouse interaction state.
   /// </summary>
   TAetherScene = class
   private
-    FParticles: TList<TParticle>;
+    FParticles: TArray<TParticle>;
+    FParticleCount: Integer;
     FOrbs: TArray<TOrb>;
     FTime: Double;
     FMouse: TPointF;
@@ -69,17 +84,15 @@ type
     procedure SpawnParticle(const ANear: TPointF; const AForce: Single);
     procedure InitializeOrbs;
     procedure SeedInitialParticles;
-    function GetParticleCount: Integer;
+    procedure RemoveParticleAt(const AIndex: Integer);
     function GetOrbCount: Integer;
-    function GetParticle(const AIndex: Integer): TParticle;
     function GetOrb(const AIndex: Integer): TOrb;
   public
     constructor Create;
     destructor Destroy; override;
 
     /// <summary>
-    /// Sets viewport size and builds the initial scene (orbs + particles).
-    /// Safe to call again after a resize; re-centers without resetting entities.
+    /// Sets viewport size and re-centers. Does not reset entities.
     /// </summary>
     procedure SetViewport(const AWidth, AHeight: Single);
 
@@ -98,21 +111,30 @@ type
     /// </summary>
     procedure Update(const ADeltaTime: Double);
 
+    /// <summary>
+    /// World-space position of orb AIndex (ellipse orbit model).
+    /// </summary>
+    function GetOrbWorldPosition(const AIndex: Integer): TPointF;
+
+    property Initialized: Boolean read FInitialized;
     property Time: Double read FTime;
     property Center: TPointF read FCenter;
     property Mouse: TPointF read FMouse;
     property ViewportWidth: Single read FViewportWidth;
     property ViewportHeight: Single read FViewportHeight;
-    property ParticleCount: Integer read GetParticleCount;
+    /// <summary>Live particle count; only Particles[0..Count-1] are valid.</summary>
+    property ParticleCount: Integer read FParticleCount;
+    /// <summary>Backing store; treat as read-only; use ParticleCount, not Length.</summary>
+    property Particles: TArray<TParticle> read FParticles;
     property OrbCount: Integer read GetOrbCount;
-    property Particles[const AIndex: Integer]: TParticle read GetParticle;
     property Orbs[const AIndex: Integer]: TOrb read GetOrb;
   end;
 
 implementation
 
 const
-  cOrbCount = 5;
+  /// <summary>Hard cap — spawn is skipped when full (keeps load bounded).</summary>
+  cMaxParticles = 500;
   cInitialParticleCount = 120;
   cMouseInfluenceRadius = 180.0;
   cMouseRepulsionStrength = 28.0;
@@ -123,19 +145,30 @@ const
   cSeedParticleForce = 0.3;
   cOrbPulseAmplitude = 0.12;
   cOrbPulseFrequency = 2.1;
+  /// <summary>Y-scale for elliptical orbits (shared with renderer via GetOrbWorldPosition).</summary>
   cOrbEllipseYScale = 0.72;
   cParticleSpawnJitter = 40.0;
   cParticleMinLife = 1.8;
   cParticleLifeVariance = 2.5;
   cParticleMinSize = 1.2;
   cParticleSizeVariance = 2.8;
+  cMinVectorLength = 1E-4;
+
+  cOrbDefs: array[0..4] of TOrbDef = (
+    (Radius: 140; Speed:  0.35; BaseSize: 28; Color: $FF00E5FF; Phase: 0.0),
+    (Radius: 210; Speed: -0.22; BaseSize: 18; Color: $FFFF2E9F; Phase: 1.2),
+    (Radius: 280; Speed:  0.15; BaseSize: 22; Color: $FFFFD166; Phase: 2.8),
+    (Radius: 175; Speed: -0.41; BaseSize: 14; Color: $FF7B61FF; Phase: 4.1),
+    (Radius: 320; Speed:  0.09; BaseSize: 16; Color: $FF00FFA3; Phase: 0.7)
+  );
 
 { TAetherScene }
 
 constructor TAetherScene.Create;
 begin
   inherited Create;
-  FParticles := TList<TParticle>.Create;
+  FParticleCount := 0;
+  SetLength(FParticles, 0);
   FTime := 0;
   FInitialized := False;
   FViewportWidth := 0;
@@ -146,13 +179,9 @@ end;
 
 destructor TAetherScene.Destroy;
 begin
-  FreeAndNil(FParticles);
+  FParticles := nil;
+  FOrbs := nil;
   inherited;
-end;
-
-function TAetherScene.GetParticleCount: Integer;
-begin
-  Result := FParticles.Count;
 end;
 
 function TAetherScene.GetOrbCount: Integer;
@@ -160,14 +189,16 @@ begin
   Result := Length(FOrbs);
 end;
 
-function TAetherScene.GetParticle(const AIndex: Integer): TParticle;
-begin
-  Result := FParticles[AIndex];
-end;
-
 function TAetherScene.GetOrb(const AIndex: Integer): TOrb;
 begin
   Result := FOrbs[AIndex];
+end;
+
+function TAetherScene.GetOrbWorldPosition(const AIndex: Integer): TPointF;
+begin
+  Result := FCenter + TPointF.Create(
+    Cos(FOrbs[AIndex].Angle) * FOrbs[AIndex].Radius,
+    Sin(FOrbs[AIndex].Angle) * FOrbs[AIndex].Radius * cOrbEllipseYScale);
 end;
 
 procedure TAetherScene.SetViewport(const AWidth, AHeight: Single);
@@ -182,7 +213,8 @@ begin
   SetViewport(AWidth, AHeight);
   FMouse := FCenter;
   FTime := 0;
-  FParticles.Clear;
+  FParticleCount := 0;
+  SetLength(FParticles, cInitialParticleCount);
   InitializeOrbs;
   SeedInitialParticles;
   FInitialized := True;
@@ -195,40 +227,14 @@ end;
 
 procedure TAetherScene.InitializeOrbs;
 begin
-  SetLength(FOrbs, cOrbCount);
-
-  FOrbs[0].Radius := 140;
-  FOrbs[0].Speed := 0.35;
-  FOrbs[0].BaseSize := 28;
-  FOrbs[0].Color := $FF00E5FF;
-  FOrbs[0].Phase := 0.0;
-
-  FOrbs[1].Radius := 210;
-  FOrbs[1].Speed := -0.22;
-  FOrbs[1].BaseSize := 18;
-  FOrbs[1].Color := $FFFF2E9F;
-  FOrbs[1].Phase := 1.2;
-
-  FOrbs[2].Radius := 280;
-  FOrbs[2].Speed := 0.15;
-  FOrbs[2].BaseSize := 22;
-  FOrbs[2].Color := $FFFFD166;
-  FOrbs[2].Phase := 2.8;
-
-  FOrbs[3].Radius := 175;
-  FOrbs[3].Speed := -0.41;
-  FOrbs[3].BaseSize := 14;
-  FOrbs[3].Color := $FF7B61FF;
-  FOrbs[3].Phase := 4.1;
-
-  FOrbs[4].Radius := 320;
-  FOrbs[4].Speed := 0.09;
-  FOrbs[4].BaseSize := 16;
-  FOrbs[4].Color := $FF00FFA3;
-  FOrbs[4].Phase := 0.7;
-
-  for var i := 0 to High(FOrbs) do
+  SetLength(FOrbs, Length(cOrbDefs));
+  for var i := 0 to High(cOrbDefs) do
   begin
+    FOrbs[i].Radius := cOrbDefs[i].Radius;
+    FOrbs[i].Speed := cOrbDefs[i].Speed;
+    FOrbs[i].BaseSize := cOrbDefs[i].BaseSize;
+    FOrbs[i].Color := cOrbDefs[i].Color;
+    FOrbs[i].Phase := cOrbDefs[i].Phase;
     FOrbs[i].Angle := Random * Pi * 2;
     FOrbs[i].Size := FOrbs[i].BaseSize;
   end;
@@ -244,11 +250,31 @@ begin
   end;
 end;
 
+procedure TAetherScene.RemoveParticleAt(const AIndex: Integer);
+begin
+  // Swap-remove: O(1), keeps dense prefix 0..Count-1
+  Dec(FParticleCount);
+  if AIndex < FParticleCount then
+  begin
+    FParticles[AIndex] := FParticles[FParticleCount];
+  end;
+end;
+
 procedure TAetherScene.SpawnParticle(const ANear: TPointF; const AForce: Single);
 var
   LParticle: TParticle;
   LAngle: Single;
 begin
+  if FParticleCount >= cMaxParticles then
+  begin
+    Exit;
+  end;
+
+  if FParticleCount >= Length(FParticles) then
+  begin
+    SetLength(FParticles, Min(cMaxParticles, Max(16, Length(FParticles) * 2)));
+  end;
+
   LAngle := Random * Pi * 2;
   LParticle.Position := ANear + TPointF.Create(
     Cos(LAngle) * Random * cParticleSpawnJitter,
@@ -260,15 +286,18 @@ begin
   LParticle.Life := LParticle.MaxLife;
   LParticle.Size := cParticleMinSize + Random * cParticleSizeVariance;
   LParticle.Hue := Random;
-  FParticles.Add(LParticle);
+
+  FParticles[FParticleCount] := LParticle;
+  Inc(FParticleCount);
 end;
 
 procedure TAetherScene.Update(const ADeltaTime: Double);
 var
   LParticle: TParticle;
-  LOrbPos: TPointF;
   LDistance: Single;
   LForce: TPointF;
+  LToMouse: TPointF;
+  LToCenter: TPointF;
   LOrbIndex: Integer;
 begin
   if not FInitialized then
@@ -286,40 +315,46 @@ begin
       (1 + cOrbPulseAmplitude * Sin(FTime * cOrbPulseFrequency + FOrbs[i].Phase));
   end;
 
-  for var i := FParticles.Count - 1 downto 0 do
+  var i := FParticleCount - 1;
+  while i >= 0 do
   begin
     LParticle := FParticles[i];
     LParticle.Life := LParticle.Life - ADeltaTime;
 
     if LParticle.Life <= 0 then
     begin
-      FParticles.Delete(i);
+      RemoveParticleAt(i);
+      Dec(i);
       Continue;
     end;
 
-    LDistance := LParticle.Position.Distance(FMouse);
-    if LDistance < cMouseInfluenceRadius then
+    LToMouse := LParticle.Position - FMouse;
+    LDistance := LToMouse.Length;
+    if (LDistance > cMinVectorLength) and (LDistance < cMouseInfluenceRadius) then
     begin
-      LForce := (LParticle.Position - FMouse).Normalize *
+      LForce := LToMouse.Normalize *
         (1 - LDistance / cMouseInfluenceRadius) * cMouseRepulsionStrength;
       LParticle.Velocity := LParticle.Velocity + LForce * ADeltaTime;
     end;
 
-    LParticle.Velocity := LParticle.Velocity +
-      (FCenter - LParticle.Position).Normalize * cCenterPullStrength * ADeltaTime;
+    LToCenter := FCenter - LParticle.Position;
+    if LToCenter.Length > cMinVectorLength then
+    begin
+      LParticle.Velocity := LParticle.Velocity +
+        LToCenter.Normalize * cCenterPullStrength * ADeltaTime;
+    end;
+
     LParticle.Velocity := LParticle.Velocity * (1 - cVelocityDamping * ADeltaTime);
     LParticle.Position := LParticle.Position + LParticle.Velocity * ADeltaTime;
 
     FParticles[i] := LParticle;
+    Dec(i);
   end;
 
   if Random < cOrbSpawnChance then
   begin
     LOrbIndex := Random(Length(FOrbs));
-    LOrbPos := FCenter + TPointF.Create(
-      Cos(FOrbs[LOrbIndex].Angle) * FOrbs[LOrbIndex].Radius,
-      Sin(FOrbs[LOrbIndex].Angle) * FOrbs[LOrbIndex].Radius * cOrbEllipseYScale);
-    SpawnParticle(LOrbPos, cOrbSpawnForce);
+    SpawnParticle(GetOrbWorldPosition(LOrbIndex), cOrbSpawnForce);
   end;
 end;
 

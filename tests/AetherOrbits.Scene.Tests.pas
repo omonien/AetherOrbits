@@ -39,9 +39,17 @@ type
     procedure SetMousePosition_IsStored;
     [Test]
     procedure SetViewport_UpdatesCenter;
+    [Test]
+    procedure GetOrbWorldPosition_MatchesEllipseModel;
+    [Test]
+    procedure ParticleCount_NeverExceedsMaxCap;
   end;
 
 implementation
+
+const
+  cMaxParticlesExpected = 500;
+  cOrbEllipseYScale = 0.72;
 
 { TAetherSceneTests }
 
@@ -59,7 +67,8 @@ procedure TAetherSceneTests.Initialize_CreatesOrbsAndParticles;
 begin
   FScene.Initialize(1280, 720);
 
-  Assert.AreEqual(5, FScene.OrbCount, 'Orb count');
+  Assert.IsTrue(FScene.Initialized);
+  Assert.AreEqual(5, FScene.OrbCount, 'Orb count from data table');
   Assert.IsTrue(FScene.ParticleCount > 0, 'Expected seed particles');
   Assert.AreEqual(1280.0, FScene.ViewportWidth, 0.01);
   Assert.AreEqual(720.0, FScene.ViewportHeight, 0.01);
@@ -75,14 +84,15 @@ begin
   FScene.Update(cStep);
   FScene.Update(cStep);
 
-  Assert.AreEqual(LBefore + 2 * cStep, FScene.Time, 1E-12, 'Time should advance by 2 steps');
+  Assert.AreEqual(LBefore + 2 * cStep, FScene.Time, 1E-12);
 end;
 
 procedure TAetherSceneTests.Update_BeforeInitialize_IsNoOp;
 begin
   FScene.Update(1 / 60);
-  Assert.AreEqual(0.0, FScene.Time, 1E-12, 'Time stays zero until Initialize');
-  Assert.AreEqual(0, FScene.OrbCount, 'No orbs before Initialize');
+  Assert.IsFalse(FScene.Initialized);
+  Assert.AreEqual(0.0, FScene.Time, 1E-12);
+  Assert.AreEqual(0, FScene.OrbCount);
 end;
 
 procedure TAetherSceneTests.SetMousePosition_IsStored;
@@ -101,6 +111,39 @@ begin
 
   Assert.AreEqual(100.0, FScene.Center.X, 0.01);
   Assert.AreEqual(200.0, FScene.Center.Y, 0.01);
+end;
+
+procedure TAetherSceneTests.GetOrbWorldPosition_MatchesEllipseModel;
+var
+  LOrb: TOrb;
+  LPos: TPointF;
+  LExpected: TPointF;
+begin
+  FScene.Initialize(400, 300);
+  LOrb := FScene.Orbs[0];
+  LPos := FScene.GetOrbWorldPosition(0);
+  LExpected := FScene.Center + TPointF.Create(
+    Cos(LOrb.Angle) * LOrb.Radius,
+    Sin(LOrb.Angle) * LOrb.Radius * cOrbEllipseYScale);
+
+  Assert.AreEqual(LExpected.X, LPos.X, 1E-4);
+  Assert.AreEqual(LExpected.Y, LPos.Y, 1E-4);
+end;
+
+procedure TAetherSceneTests.ParticleCount_NeverExceedsMaxCap;
+const
+  cStep = 1 / 60;
+begin
+  FScene.Initialize(800, 600);
+
+  // Drive many updates with high spawn pressure via time
+  for var i := 0 to 5000 do
+  begin
+    FScene.Update(cStep);
+  end;
+
+  Assert.IsTrue(FScene.ParticleCount <= cMaxParticlesExpected,
+    Format('ParticleCount %d exceeded cap %d', [FScene.ParticleCount, cMaxParticlesExpected]));
 end;
 
 end.
