@@ -38,6 +38,8 @@ type
     [Test]
     procedure SetMousePosition_IsStored;
     [Test]
+    procedure PointerDown_SpawnsBurstParticles;
+    [Test]
     procedure SetViewport_UpdatesCenter;
     [Test]
     procedure GetOrbWorldPosition_MatchesEllipseModel;
@@ -102,6 +104,19 @@ begin
 
   Assert.AreEqual(42.0, FScene.Mouse.X, 0.01);
   Assert.AreEqual(24.0, FScene.Mouse.Y, 0.01);
+end;
+
+procedure TAetherSceneTests.PointerDown_SpawnsBurstParticles;
+var
+  LBefore: Integer;
+begin
+  FScene.Initialize(800, 600);
+  LBefore := FScene.ParticleCount;
+  FScene.PointerDown(TPointF.Create(100, 100));
+
+  Assert.AreEqual(100.0, FScene.Mouse.X, 0.01);
+  Assert.AreEqual(100.0, FScene.Mouse.Y, 0.01);
+  Assert.IsTrue(FScene.ParticleCount > LBefore, 'Click/tap should spawn a particle burst');
 end;
 
 procedure TAetherSceneTests.SetViewport_UpdatesCenter;

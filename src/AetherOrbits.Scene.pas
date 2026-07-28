@@ -102,9 +102,14 @@ type
     procedure Initialize(const AWidth, AHeight: Single);
 
     /// <summary>
-    /// Updates mouse position used for particle repulsion.
+    /// Updates pointer position used for particle repulsion (scene-local coords).
     /// </summary>
     procedure SetMousePosition(const APosition: TPointF);
+
+    /// <summary>
+    /// Pointer down / click: set position and spawn a short outward particle burst.
+    /// </summary>
+    procedure PointerDown(const APosition: TPointF);
 
     /// <summary>
     /// Advances simulation by a fixed delta (call from game-loop OnUpdate).
@@ -136,8 +141,11 @@ const
   /// <summary>Hard cap — spawn is skipped when full (keeps load bounded).</summary>
   cMaxParticles = 500;
   cInitialParticleCount = 120;
-  cMouseInfluenceRadius = 180.0;
-  cMouseRepulsionStrength = 28.0;
+  cMouseInfluenceRadius = 200.0;
+  /// <summary>Strong enough to read while moving; was too weak to notice.</summary>
+  cMouseRepulsionStrength = 95.0;
+  cClickBurstCount = 14;
+  cClickBurstForce = 1.4;
   cCenterPullStrength = 4.0;
   cVelocityDamping = 0.85;
   cOrbSpawnChance = 0.35;
@@ -223,6 +231,22 @@ end;
 procedure TAetherScene.SetMousePosition(const APosition: TPointF);
 begin
   FMouse := APosition;
+end;
+
+procedure TAetherScene.PointerDown(const APosition: TPointF);
+var
+  i: Integer;
+begin
+  FMouse := APosition;
+  if not FInitialized then
+  begin
+    Exit;
+  end;
+  // Visible click/tap feedback: spray particles outward from the pointer.
+  for i := 1 to cClickBurstCount do
+  begin
+    SpawnParticle(APosition, cClickBurstForce);
+  end;
 end;
 
 procedure TAetherScene.InitializeOrbs;

@@ -17,7 +17,7 @@ A small **Delphi 13** FireMonkey demo: glowing orbs, particles, and a VSync-driv
 
 ![Aether Orbits on Windows — Preferred FPS bar, particle scene, and stats footer](docs/images/aether-orbits-demo.png)
 
-- An atmospheric particle field with orbiting orbs (mouse / touch influences the scene).
+- An atmospheric particle field with orbiting orbs.
 - A **dark stats footer**: FPS, frame time, process CPU, particle counts, platform, and active Skia/FMX backend.
 - A **Preferred FPS** control (30 / 60 / 120) so you can see how the display link and pacing behave on your device.
 - Smooth animation driven by FMX’s **Display Link** (Delphi 13), not a coarse `TTimer`.
@@ -66,7 +66,8 @@ Output goes to `build/<Platform>/<Config>/` (git-ignored).
 
 | Control | Action |
 |---------|--------|
-| **Mouse / touch move** | Influences particles near the pointer |
+| **Mouse / touch move** | Repels nearby particles (soft force field under the pointer) |
+| **Click / tap** | Spawns a short particle burst at the pointer |
 | **Preferred FPS** (top bar) | Request 30, 60, or 120 frames per second |
 | **Stats footer** | Live FPS, frame ms, Preferred value, CPU, platform, render backend |
 
