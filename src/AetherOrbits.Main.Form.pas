@@ -4,7 +4,9 @@
 /// </summary>
 ///
 /// <remarks>
-/// Owns UI (form + Skia paint box) and wires TGameLoop to TAetherScene.
+/// Owns UI (form + Skia paint box) and wires the standalone TGameLoop to TAetherScene.
+/// TGameLoop (AetherOrbits.GameLoop) knows nothing about this form or the scene;
+/// its core is the ProcessAnimation override (FMX Display Link / Delphi 13).
 /// Simulation lives in AetherOrbits.Scene; drawing in AetherOrbits.Scene.Renderer.
 /// </remarks>
 ///

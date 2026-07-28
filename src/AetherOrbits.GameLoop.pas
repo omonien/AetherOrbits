@@ -1,16 +1,32 @@
 ﻿/// <summary>
 /// AetherOrbits.GameLoop
-/// Isolated, reusable fixed-timestep game loop for FMX (Delphi 13+).
+/// Standalone, reusable fixed-timestep game loop for FMX (Delphi 13+).
 /// </summary>
 ///
 /// <remarks>
-/// Derives from TAnimation and overrides ProcessAnimation so the loop is
-/// driven by the Display Link Service (VSync). This is the modern,
-/// framework-native way to run a game loop under FireMonkey without third-
-/// party libraries.
-///
-/// Pattern: fixed timestep for update/physics (Glenn Fiedler), render once
-/// per frame after updates.
+/// <para>
+/// <b>Independence:</b> This unit has no knowledge of the Aether Orbits demo,
+/// scene, Skia, or any form. Dependencies are only System.* and FMX.Ani /
+/// FMX.Types (for TAnimation). Copy this single unit into any FMX project
+/// and wire OnUpdate / OnRender — that is all that is required.
+/// </para>
+/// <para>
+/// <b>The core idea (Delphi 13 / Embarcadero FMX):</b> derive from
+/// <c>TAnimation</c> and override <c>ProcessAnimation</c>.
+/// From Delphi 13, FMX drives animations through the platform
+/// <b>Display Link Service</b> (VSync / display refresh). The framework
+/// calls <c>ProcessAnimation</c> on each display-link tick for every
+/// running animation. That virtual method is therefore the official,
+/// framework-native hook for continuous per-frame work — without a
+/// TTimer, a busy thread, Application.OnIdle hacks, or third-party loops.
+/// </para>
+/// <para>
+/// Everything else in this unit (stopwatch, accumulator, fixed timestep,
+/// max-frame clamp) is built <i>on top of</i> that override. The override
+/// is the integration point Embarcadero gives us; the fixed-timestep
+/// pattern (Glenn Fiedler) is the portable game-loop discipline we apply
+/// inside it.
+/// </para>
 /// </remarks>
 ///
 /// <copyright>
@@ -27,7 +43,7 @@ uses
   System.Classes,
   System.Diagnostics,
   System.SysUtils,
-  // FMX
+  // FMX (TAnimation only — no forms, no Skia, no demo types)
   FMX.Types,
   FMX.Ani;
 
@@ -44,8 +60,13 @@ type
 
   /// <summary>
   /// High-precision, VSync-driven game loop based on TAnimation.
-  /// Uses the Display Link Service of Delphi 13.
   /// </summary>
+  /// <remarks>
+  /// Standalone drop-in: no coupling to any particular scene or renderer.
+  /// The essential mechanism is the <c>ProcessAnimation</c> override, which
+  /// the Delphi 13 FMX Display Link Service invokes on each VSync-aligned
+  /// tick. See the unit remarks for the full rationale.
+  /// </remarks>
   TGameLoop = class(TAnimation)
   private
     FStopwatch: TStopwatch;
@@ -56,6 +77,22 @@ type
     FOnRender: TGameRenderEvent;
     FMaxFrameTime: Double;
   protected
+    /// <summary>
+    /// <b>Central hook of this unit.</b> Override of <c>TAnimation.ProcessAnimation</c>.
+    /// </summary>
+    /// <remarks>
+    /// Embarcadero FMX (Delphi 13+) calls this method from the Display Link
+    /// Service for each active animation, synchronized with the display
+    /// refresh (VSync). By putting the game-loop body here we:
+    /// <list type="bullet">
+    ///   <item>run at the native display cadence (no timer drift),</item>
+    ///   <item>stay inside the official FMX animation pipeline,</item>
+    ///   <item>avoid custom threads or polling loops.</item>
+    /// </list>
+    /// Inside the override we measure real elapsed time, clamp spikes,
+    /// run zero-or-more fixed-step <c>OnUpdate</c> calls, then fire
+    /// <c>OnRender</c> once per display tick.
+    /// </remarks>
     procedure ProcessAnimation; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -112,7 +149,8 @@ begin
   FLastTime := 0;
   FStopwatch := TStopwatch.StartNew;
 
-  // Keep the animation running continuously under the Display Link Service
+  // Loop + huge Duration keep TAnimation "running" so Display Link keeps
+  // calling ProcessAnimation; Duration is not the game-loop period.
   Loop := True;
   Duration := cInfiniteAnimationDuration;
 end;
@@ -123,7 +161,7 @@ begin
   FStopwatch.Start;
   FLastTime := 0;
   FAccumulator := 0;
-  Start;
+  Start; // registers with FMX animation / Display Link
 end;
 
 procedure TGameLoop.StopLoop;
@@ -132,6 +170,11 @@ begin
 end;
 
 procedure TGameLoop.ProcessAnimation;
+// =============================================================================
+// CORE OF THIS UNIT — called by FMX (Delphi 13 Display Link) each VSync tick.
+// This override is the official framework hook; do not replace it with a
+// TTimer or a thread if the goal is the native D13 approach.
+// =============================================================================
 var
   LNow: Double;
   LFrameTime: Double;
@@ -148,7 +191,7 @@ begin
 
   FAccumulator := FAccumulator + LFrameTime;
 
-  // Fixed timestep – classic Glenn Fiedler pattern
+  // Fixed timestep (Glenn Fiedler) — portable discipline on top of the hook
   while FAccumulator >= FFixedTimeStep do
   begin
     if Assigned(FOnUpdate) then
@@ -159,7 +202,7 @@ begin
     FAccumulator := FAccumulator - FFixedTimeStep;
   end;
 
-  // Render / invalidate once per frame
+  // Once per display tick: consumers typically invalidate a paint surface
   if Assigned(FOnRender) then
   begin
     FOnRender;

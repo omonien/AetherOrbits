@@ -6,6 +6,11 @@
 /// <remarks>
 /// Separation of concerns: reads scene state and paints into an ISkCanvas.
 /// Safe to call from a paint-box OnDraw handler.
+///
+/// Skia is used here as an <b>open rendering API with efficient backends</b>
+/// (raster / GPU paths under FMX), not as a game-loop black box. Frame timing
+/// stays in AetherOrbits.GameLoop (ProcessAnimation / Display Link); this unit
+/// only issues explicit draw calls when the UI asks for a repaint.
 /// </remarks>
 ///
 /// <copyright>

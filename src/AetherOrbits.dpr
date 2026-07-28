@@ -4,7 +4,8 @@
 /// </summary>
 ///
 /// <remarks>
-/// Thin shell: TGameLoop drives TAetherScene; Skia rendering is separate.
+/// Thin shell: TGameLoop (Display Link / ProcessAnimation) drives TAetherScene;
+/// Skia is only the efficient draw backend (not the game-loop black box).
 /// Requires Delphi 13+ with integrated Skia.
 /// </remarks>
 ///
