@@ -33,6 +33,18 @@ function GetHostPlatformLabel: string;
 /// </summary>
 function GetActiveRenderBackendLabel: string;
 
+/// <summary>
+/// FMX display-link preferred frame rate (GlobalPreferredFramesPerSecond).
+/// This is a request to the platform, not measured panel Hz.
+/// </summary>
+function GetPreferredFramesPerSecond: Integer;
+
+/// <summary>
+/// Sets GlobalPreferredFramesPerSecond. Caller should restart the game loop
+/// (StopLoop/StartLoop) so Mac/iOS CADisplayLink re-applies the range.
+/// </summary>
+procedure SetPreferredFramesPerSecond(const AValue: Integer);
+
 /// <summary>Number of logical processors visible to this process.</summary>
 function GetLogicalProcessorCount: Integer;
 
@@ -220,6 +232,29 @@ begin
   else
   begin
     Result := 'FMX (default)' + LFlags;
+  end;
+end;
+
+{ Preferred frames per second }
+
+function GetPreferredFramesPerSecond: Integer;
+begin
+  Result := GlobalPreferredFramesPerSecond;
+  if Result < 1 then
+  begin
+    Result := 60;
+  end;
+end;
+
+procedure SetPreferredFramesPerSecond(const AValue: Integer);
+begin
+  if AValue < 1 then
+  begin
+    GlobalPreferredFramesPerSecond := 60;
+  end
+  else
+  begin
+    GlobalPreferredFramesPerSecond := AValue;
   end;
 end;
 

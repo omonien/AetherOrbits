@@ -25,6 +25,8 @@ type
     [Test]
     procedure HostPlatformLabel_OmitsBuildZero;
     [Test]
+    procedure PreferredFramesPerSecond_RoundTrip;
+    [Test]
     procedure RenderBackendLabel_IsNonEmpty;
     [Test]
     procedure LogicalProcessorCount_AtLeastOne;
@@ -45,6 +47,23 @@ begin
   Assert.IsFalse(
     GetHostPlatformLabel.Contains('(build 0)'),
     'Platform label must omit build when Build is 0');
+end;
+
+procedure TSystemInfoTests.PreferredFramesPerSecond_RoundTrip;
+var
+  LSaved: Integer;
+begin
+  LSaved := GetPreferredFramesPerSecond;
+  try
+    SetPreferredFramesPerSecond(30);
+    Assert.AreEqual(30, GetPreferredFramesPerSecond);
+    SetPreferredFramesPerSecond(120);
+    Assert.AreEqual(120, GetPreferredFramesPerSecond);
+    SetPreferredFramesPerSecond(0);
+    Assert.AreEqual(60, GetPreferredFramesPerSecond, 'Invalid values fall back to 60');
+  finally
+    SetPreferredFramesPerSecond(LSaved);
+  end;
 end;
 
 procedure TSystemInfoTests.RenderBackendLabel_IsNonEmpty;

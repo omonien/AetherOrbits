@@ -197,20 +197,22 @@ begin
 
   LLines := TStringList.Create;
   try
+    // Preferred is read live (radio can change it without re-CaptureEnvironment).
     if IsNarrow(ASurfaceWidth) then
     begin
       // Phone: short tokens, one topic per line
-      LLines.Add(Format('FPS: %d  |  Frame: %.0f ms  |  CPU: %.0f%%/core',
-        [FFps, FFrameMs, FCpuPercentOfOneCore]));
-      LLines.Add(Format('CPU: %.0f%% of %d cores  |  P: %d  |  Orbs: %d  |  Sim: %.1fs',
-        [LOfMachine, FLogicalCpuCount, AParticleCount, AOrbCount, ASimTime]));
-      LLines.Add('Platform: ' + FPlatformLabel);
+      LLines.Add(Format('FPS: %d  |  Frame: %.0f ms  |  Pref: %d',
+        [FFps, FFrameMs, GetPreferredFramesPerSecond]));
+      LLines.Add(Format('CPU: %.0f%%/core (%.0f%% of %d)  |  P: %d  |  Orbs: %d',
+        [FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount, AParticleCount, AOrbCount]));
+      LLines.Add(Format('Sim: %.1fs  |  %s', [ASimTime, FPlatformLabel]));
       LLines.Add('Backend: ' + FBackendLabel);
     end
     else if IsMedium(ASurfaceWidth) then
     begin
-      LLines.Add(Format('FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)',
-        [FFps, FFrameMs, FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount]));
+      LLines.Add(Format('FPS: %d  |  Frame: %.1f ms  |  Preferred: %d  |  CPU: %.0f%% of 1 core (%.0f%% of %d)',
+        [FFps, FFrameMs, GetPreferredFramesPerSecond, FCpuPercentOfOneCore, LOfMachine,
+         FLogicalCpuCount]));
       LLines.Add(Format('Particles: %d  |  Orbs: %d  |  Sim: %.1f s',
         [AParticleCount, AOrbCount, ASimTime]));
       LLines.Add(Format('Platform: %s  |  Backend: %s',
@@ -219,9 +221,9 @@ begin
     else
     begin
       LLines.Add(Format(
-        'FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s',
-        [FFps, FFrameMs, FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount,
-         AParticleCount, AOrbCount, ASimTime]));
+        'FPS: %d  |  Frame: %.1f ms  |  Preferred: %d  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s',
+        [FFps, FFrameMs, GetPreferredFramesPerSecond, FCpuPercentOfOneCore, LOfMachine,
+         FLogicalCpuCount, AParticleCount, AOrbCount, ASimTime]));
       LLines.Add(Format('Platform: %s  |  Backend: %s',
         [FPlatformLabel, FBackendLabel]));
     end;
