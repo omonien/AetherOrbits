@@ -16,10 +16,11 @@ uses
   // System
   System.SysUtils,
   System.Classes,
+  // FMX
+  FMX.Forms,
   // Test
   DUnitX.TestFramework,
   // Own
-  FMX.Forms,
   AetherOrbits.GameLoop;
 
 type
@@ -34,6 +35,7 @@ type
   [TestFixture]
   TGameLoopTests = class
   private
+    FForm: TForm;
     FLoop: TGameLoopHarness;
     FUpdateCount: Integer;
     FRenderCount: Integer;
@@ -58,6 +60,8 @@ type
     procedure ProcessAnimation_InvokesRenderOncePerTick;
     [Test]
     procedure Create_WithFmxOwner_SetsParent;
+    [Test]
+    procedure StartLoop_WithoutRoot_Raises;
   end;
 
 implementation
@@ -73,7 +77,9 @@ end;
 
 procedure TGameLoopTests.SetUp;
 begin
-  FLoop := TGameLoopHarness.Create(nil);
+  // Form provides Root so StartLoop can subscribe to Display Link
+  FForm := TForm.CreateNew(nil);
+  FLoop := TGameLoopHarness.Create(FForm);
   FUpdateCount := 0;
   FRenderCount := 0;
   FLastDelta := 0;
@@ -84,6 +90,7 @@ end;
 procedure TGameLoopTests.TearDown;
 begin
   FreeAndNil(FLoop);
+  FreeAndNil(FForm);
 end;
 
 procedure TGameLoopTests.HandleUpdate(const ADeltaTime: Double);
@@ -149,7 +156,6 @@ procedure TGameLoopTests.ProcessAnimation_InvokesRenderOncePerTick;
 begin
   FLoop.StartLoop;
   try
-    // Start may already fire ProcessAnimation once via the animation system
     FRenderCount := 0;
     FUpdateCount := 0;
 
@@ -167,18 +173,34 @@ var
   LForm: TForm;
   LLoop: TGameLoop;
 begin
-  // Regression: without Parent, TAnimation.Start uses the immediate path (Root=nil)
-  // and the Display Link never drives ProcessAnimation — scene freezes after first paint.
   LForm := TForm.CreateNew(nil);
   try
     LLoop := TGameLoop.Create(LForm);
     try
-      Assert.AreSame(LForm, LLoop.Parent, 'GameLoop must parent to FMX owner for Root/Display Link');
+      Assert.AreSame(LForm, LLoop.Parent,
+        'GameLoop must parent to FMX owner for Root/Display Link');
     finally
       LLoop.Free;
     end;
   finally
     LForm.Free;
+  end;
+end;
+
+procedure TGameLoopTests.StartLoop_WithoutRoot_Raises;
+var
+  LLoop: TGameLoop;
+begin
+  LLoop := TGameLoop.Create(nil);
+  try
+    Assert.WillRaise(
+      procedure
+      begin
+        LLoop.StartLoop;
+      end,
+      EInvalidOpException);
+  finally
+    LLoop.Free;
   end;
 end;
 

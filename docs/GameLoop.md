@@ -74,3 +74,5 @@ something else is the consumer’s choice and stays outside this unit.
 If `Root = nil`, FMX runs a **one-shot immediate** animation (`ProcessAnimation` once) and sets `Running := False`. Symptom: first paint looks correct, then everything freezes.
 
 `TGameLoop.Create` parents itself to the owner when the owner is a `TFmxObject`. Call `StartLoop` from **OnShow** (or after the form is visible), not only from OnCreate.
+
+`StartLoop` raises `EInvalidOpException` if `Root` is still nil — fail loud instead of a silent freeze.

@@ -11,6 +11,7 @@
 /// (raster / GPU paths under FMX), not as a game-loop black box. Frame timing
 /// stays in AetherOrbits.GameLoop (ProcessAnimation / Display Link); this unit
 /// only issues explicit draw calls when the UI asks for a repaint.
+/// Orbit positions come from TAetherScene.GetOrbWorldPosition (single model).
 /// </remarks>
 ///
 /// <copyright>
@@ -50,7 +51,6 @@ type
 implementation
 
 const
-  cOrbEllipseYScale = 0.72;
   cCorePulseAmplitude = 0.08;
   cCorePulseFrequency = 1.7;
   cCoreOuterRadius = 95.0;
@@ -72,12 +72,14 @@ var
   LPaint: ISkPaint;
   LOrb: TOrb;
   LOrbPos: TPointF;
+  LParticles: TArray<TParticle>;
   LParticle: TParticle;
   LAlpha: Single;
   LRadius: Single;
   LCorePulse: Single;
   LCenter: TPointF;
   LColorRec: TAlphaColorRec;
+  LCount: Integer;
 begin
   if (AScene = nil) or (ACanvas = nil) then
   begin
@@ -111,13 +113,11 @@ begin
     [$FFFFFFFF, $FF66B3FF, $FF1A6BFF, $00000000]);
   ACanvas.DrawCircle(LCenter.X, LCenter.Y, cCoreInnerRadius * LCorePulse, LPaint);
 
-  // Orbs
+  // Orbs — world position owned by the scene model
   for var i := 0 to AScene.OrbCount - 1 do
   begin
     LOrb := AScene.Orbs[i];
-    LOrbPos := LCenter + TPointF.Create(
-      Cos(LOrb.Angle) * LOrb.Radius,
-      Sin(LOrb.Angle) * LOrb.Radius * cOrbEllipseYScale);
+    LOrbPos := AScene.GetOrbWorldPosition(i);
 
     LPaint := TSkPaint.Create;
     LPaint.AntiAlias := True;
@@ -148,13 +148,15 @@ begin
       LPaint);
   end;
 
-  // Particles
+  // Particles — one array ref, iterate dense prefix only
+  LParticles := AScene.Particles;
+  LCount := AScene.ParticleCount;
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
 
-  for var i := 0 to AScene.ParticleCount - 1 do
+  for var i := 0 to LCount - 1 do
   begin
-    LParticle := AScene.Particles[i];
+    LParticle := LParticles[i];
     LAlpha := LParticle.Life / LParticle.MaxLife;
     LAlpha := LAlpha * LAlpha;
     LRadius := LParticle.Size * (0.6 + 0.4 * LAlpha);

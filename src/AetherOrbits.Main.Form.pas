@@ -5,10 +5,8 @@
 ///
 /// <remarks>
 /// Owns UI (form + Skia paint box + stats footer) and wires the standalone
-/// TGameLoop to TAetherScene. TGameLoop knows nothing about this form or the
-/// scene; its core is the ProcessAnimation override (FMX Display Link / Delphi 13).
-/// Simulation lives in AetherOrbits.Scene; drawing in AetherOrbits.Scene.Renderer.
-/// The game loop is started in FormShow so the form is visible and Root is valid.
+/// TGameLoop to TAetherScene. Viewport size is taken only from the paint box
+/// (layout), never invented with footer-height arithmetic on the form.
 /// </remarks>
 ///
 /// <copyright>
@@ -35,7 +33,6 @@ uses
   FMX.Forms,
   FMX.Graphics,
   FMX.StdCtrls,
-  FMX.Layouts,
   FMX.Objects,
   // Skia
   System.Skia,
@@ -46,6 +43,25 @@ uses
   AetherOrbits.Scene.Renderer;
 
 type
+  /// <summary>
+  /// Rolling FPS / frame-time samples for the stats footer.
+  /// </summary>
+  TFrameStats = record
+    Stopwatch: TStopwatch;
+    FrameCount: Integer;
+    WindowStart: Double;
+    LastRenderTime: Double;
+    Fps: Integer;
+    FrameMs: Double;
+    RefreshTimer: Double;
+    procedure Reset;
+    procedure OnFrameRendered;
+    function ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
+    function FormatLine(
+      const AParticleCount, AOrbCount: Integer;
+      const ASimTime: Double): string;
+  end;
+
   /// <summary>
   /// Main demo window: game loop + scene + paint box + stats footer.
   /// </summary>
@@ -61,15 +77,11 @@ type
     FLabelStats: TLabel;
     FGameLoop: TGameLoop;
     FScene: TAetherScene;
-    FFpsStopwatch: TStopwatch;
-    FFrameCount: Integer;
-    FFpsWindowStart: Double;
-    FLastRenderTime: Double;
-    FFps: Integer;
-    FFrameMs: Double;
-    FStatsRefreshTimer: Double;
+    FFrameStats: TFrameStats;
 
     procedure CreateUi;
+    procedure SyncViewportFromPaintBox;
+    procedure EnsureSceneInitialized;
     procedure DoGameUpdate(const ADeltaTime: Double);
     procedure DoGameRender;
     procedure DoPaintBoxDraw(
@@ -77,7 +89,7 @@ type
       const ACanvas: ISkCanvas;
       const ADest: TRectF;
       const AOpacity: Single);
-    procedure UpdateStatsFooter(const AForce: Boolean = False);
+    procedure UpdateStatsFooter;
   end;
 
 var
@@ -89,16 +101,66 @@ implementation
 
 const
   cStatsPanelHeight = 28;
-  cStatsRefreshInterval = 0.25; // seconds — avoid UI thrash every frame
+  cStatsRefreshInterval = 0.25;
+  cStatsBarColor = $FF0B1220;
+  cStatsTextColor = $FFE8EEF8;
   scStatsFormat =
     'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s';
+
+{ TFrameStats }
+
+procedure TFrameStats.Reset;
+begin
+  Stopwatch := TStopwatch.StartNew;
+  FrameCount := 0;
+  WindowStart := 0;
+  LastRenderTime := 0;
+  Fps := 0;
+  FrameMs := 0;
+  RefreshTimer := 0;
+end;
+
+procedure TFrameStats.OnFrameRendered;
+var
+  LNow: Double;
+begin
+  LNow := Stopwatch.Elapsed.TotalSeconds;
+  if LastRenderTime > 0 then
+  begin
+    FrameMs := (LNow - LastRenderTime) * 1000.0;
+  end;
+  LastRenderTime := LNow;
+
+  Inc(FrameCount);
+  if (LNow - WindowStart) >= 1.0 then
+  begin
+    Fps := FrameCount;
+    FrameCount := 0;
+    WindowStart := LNow;
+  end;
+end;
+
+function TFrameStats.ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
+begin
+  RefreshTimer := RefreshTimer + ADeltaTime;
+  Result := RefreshTimer >= AInterval;
+  if Result then
+  begin
+    RefreshTimer := 0;
+  end;
+end;
+
+function TFrameStats.FormatLine(
+  const AParticleCount, AOrbCount: Integer;
+  const ASimTime: Double): string;
+begin
+  Result := Format(scStatsFormat, [Fps, FrameMs, AParticleCount, AOrbCount, ASimTime]);
+end;
 
 { TFormMain }
 
 procedure TFormMain.CreateUi;
 begin
-  // Footer first so Align.Bottom claims space; paint box fills the rest
-  // Explicit dark bar (TPanel style is often light grey — white text would vanish)
   FPanelStats := TRectangle.Create(Self);
   FPanelStats.Parent := Self;
   FPanelStats.Align := TAlignLayout.Bottom;
@@ -106,9 +168,7 @@ begin
   FPanelStats.HitTest := False;
   FPanelStats.Stroke.Kind := TBrushKind.None;
   FPanelStats.Fill.Kind := TBrushKind.Solid;
-  FPanelStats.Fill.Color := $FF0B1220; // matches scene night background
-  FPanelStats.XRadius := 0;
-  FPanelStats.YRadius := 0;
+  FPanelStats.Fill.Color := cStatsBarColor;
 
   FLabelStats := TLabel.Create(Self);
   FLabelStats.Parent := FPanelStats;
@@ -117,10 +177,10 @@ begin
   FLabelStats.Margins.Left := 12;
   FLabelStats.Margins.Right := 12;
   FLabelStats.VertTextAlign := TTextAlign.Center;
-  FLabelStats.StyledSettings := []; // take full control of font/color
+  FLabelStats.StyledSettings := [];
   FLabelStats.TextSettings.Font.Size := 12;
   FLabelStats.TextSettings.Font.Style := [TFontStyle.fsBold];
-  FLabelStats.TextSettings.FontColor := $FFE8EEF8; // near-white on dark bar
+  FLabelStats.TextSettings.FontColor := cStatsTextColor;
   FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
   FLabelStats.Text := 'FPS: —';
 
@@ -131,35 +191,50 @@ begin
   FPaintBox.OnDraw := DoPaintBoxDraw;
 end;
 
+procedure TFormMain.SyncViewportFromPaintBox;
+begin
+  if not Assigned(FScene) or not Assigned(FPaintBox) then
+  begin
+    Exit;
+  end;
+
+  FScene.SetViewport(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+end;
+
+procedure TFormMain.EnsureSceneInitialized;
+begin
+  if FScene.Initialized then
+  begin
+    SyncViewportFromPaintBox;
+  end
+  else
+  begin
+    FScene.Initialize(Max(1, FPaintBox.Width), Max(1, FPaintBox.Height));
+  end;
+end;
+
 procedure TFormMain.FormCreate(ASender: TObject);
 begin
   FScene := TAetherScene.Create;
   CreateUi;
+  FFrameStats.Reset;
 
-  FFpsStopwatch := TStopwatch.StartNew;
-  FFpsWindowStart := 0;
-  FLastRenderTime := 0;
-  FFrameCount := 0;
-  FFps := 0;
-  FFrameMs := 0;
-  FStatsRefreshTimer := 0;
-
-  FScene.Initialize(ClientWidth, ClientHeight - cStatsPanelHeight);
-
-  // Parent is set to the form inside TGameLoop.Create (Display Link needs Root)
   FGameLoop := TGameLoop.Create(Self);
   FGameLoop.OnUpdate := DoGameUpdate;
   FGameLoop.OnRender := DoGameRender;
-  // StartLoop in FormShow — form must be visible for TAnimation.Start
+  // Initialize + StartLoop in FormShow (layout size + visibility)
 end;
 
 procedure TFormMain.FormShow(ASender: TObject);
 begin
+  EnsureSceneInitialized;
+
   if Assigned(FGameLoop) and not FGameLoop.Running then
   begin
     FGameLoop.StartLoop;
   end;
-  UpdateStatsFooter(True);
+
+  UpdateStatsFooter;
 end;
 
 procedure TFormMain.FormDestroy(ASender: TObject);
@@ -173,9 +248,9 @@ end;
 
 procedure TFormMain.FormResize(ASender: TObject);
 begin
-  if Assigned(FScene) then
+  if Assigned(FScene) and FScene.Initialized then
   begin
-    FScene.SetViewport(ClientWidth, Max(1, ClientHeight - cStatsPanelHeight));
+    SyncViewportFromPaintBox;
   end;
 end;
 
@@ -189,49 +264,32 @@ end;
 
 procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
 begin
-  FScene.SetViewport(ClientWidth, Max(1, ClientHeight - cStatsPanelHeight));
+  // Viewport is layout-owned — never re-derived from form height here
   FScene.Update(ADeltaTime);
 
-  FStatsRefreshTimer := FStatsRefreshTimer + ADeltaTime;
-  if FStatsRefreshTimer >= cStatsRefreshInterval then
+  if FFrameStats.ShouldRefreshFooter(ADeltaTime, cStatsRefreshInterval) then
   begin
-    FStatsRefreshTimer := 0;
-    UpdateStatsFooter(False);
+    UpdateStatsFooter;
   end;
 end;
 
 procedure TFormMain.DoGameRender;
-var
-  LNow: Double;
 begin
-  LNow := FFpsStopwatch.Elapsed.TotalSeconds;
-  if FLastRenderTime > 0 then
-  begin
-    FFrameMs := (LNow - FLastRenderTime) * 1000.0;
-  end;
-  FLastRenderTime := LNow;
-
-  Inc(FFrameCount);
-  if (LNow - FFpsWindowStart) >= 1.0 then
-  begin
-    FFps := FFrameCount;
-    FFrameCount := 0;
-    FFpsWindowStart := LNow;
-  end;
-
+  FFrameStats.OnFrameRendered;
   FPaintBox.Redraw;
 end;
 
-procedure TFormMain.UpdateStatsFooter(const AForce: Boolean);
+procedure TFormMain.UpdateStatsFooter;
 begin
   if not Assigned(FLabelStats) or not Assigned(FScene) then
   begin
     Exit;
   end;
 
-  FLabelStats.Text := Format(
-    scStatsFormat,
-    [FFps, FFrameMs, FScene.ParticleCount, FScene.OrbCount, FScene.Time]);
+  FLabelStats.Text := FFrameStats.FormatLine(
+    FScene.ParticleCount,
+    FScene.OrbCount,
+    FScene.Time);
 end;
 
 procedure TFormMain.DoPaintBoxDraw(
@@ -240,7 +298,6 @@ procedure TFormMain.DoPaintBoxDraw(
   const ADest: TRectF;
   const AOpacity: Single);
 begin
-  // AOpacity reserved by TSkDrawEvent; scene draws fully opaque
   TAetherSceneRenderer.Draw(FScene, ACanvas, ADest);
 end;
 
