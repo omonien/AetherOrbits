@@ -59,8 +59,9 @@ end;
 
 function GetHostPlatformLabel: string;
 begin
-  // TOSVersion.ToString is OS family + version; architecture is compile target
-  Result := Format('%s · %s', [GetArchitectureLabel, TOSVersion.ToString]);
+  // Architecture of this binary + OS identity (English API field names)
+  Result := Format('%s - %s %d.%d (build %d)',
+    [GetArchitectureLabel, TOSVersion.Name, TOSVersion.Major, TOSVersion.Minor, TOSVersion.Build]);
 end;
 
 function FriendlyCanvasClassName(const AClass: TClass): string;

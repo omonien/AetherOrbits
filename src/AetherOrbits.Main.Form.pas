@@ -109,8 +109,8 @@ const
   cStatsBarColor = $FF0B1220;
   cStatsTextColor = $FFE8EEF8;
   scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s' + sLineBreak +
-    '%s  |  Backend: %s';
+    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim time: %.1f s' + sLineBreak +
+    'Platform: %s  |  Backend: %s';
 
 { TFrameStats }
 
@@ -198,7 +198,7 @@ begin
   FLabelStats.TextSettings.FontColor := cStatsTextColor;
   FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
   FLabelStats.WordWrap := True;
-  FLabelStats.Text := 'FPS: —';
+  FLabelStats.Text := 'FPS: -';
 
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := Self;
