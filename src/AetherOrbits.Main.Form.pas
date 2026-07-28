@@ -40,7 +40,8 @@ uses
   // Own
   AetherOrbits.GameLoop,
   AetherOrbits.Scene,
-  AetherOrbits.Scene.Renderer;
+  AetherOrbits.Scene.Renderer,
+  AetherOrbits.RuntimeInfo;
 
 type
   /// <summary>
@@ -54,7 +55,10 @@ type
     Fps: Integer;
     FrameMs: Double;
     RefreshTimer: Double;
+    PlatformLabel: string;
+    BackendLabel: string;
     procedure Reset;
+    procedure CaptureEnvironment;
     procedure OnFrameRendered;
     function ShouldRefreshFooter(const ADeltaTime, AInterval: Double): Boolean;
     function FormatLine(
@@ -100,12 +104,13 @@ implementation
 {$R *.fmx}
 
 const
-  cStatsPanelHeight = 28;
+  cStatsPanelHeight = 40;
   cStatsRefreshInterval = 0.25;
   cStatsBarColor = $FF0B1220;
   cStatsTextColor = $FFE8EEF8;
   scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s';
+    'FPS: %d  |  Frame: %.1f ms  |  Particles: %d  |  Orbs: %d  |  Sim time: %.1f s' + sLineBreak +
+    'Platform: %s  |  Backend: %s';
 
 { TFrameStats }
 
@@ -118,6 +123,15 @@ begin
   Fps := 0;
   FrameMs := 0;
   RefreshTimer := 0;
+  PlatformLabel := '';
+  BackendLabel := '';
+end;
+
+
+procedure TFrameStats.CaptureEnvironment;
+begin
+  PlatformLabel := GetHostPlatformLabel;
+  BackendLabel := GetActiveRenderBackendLabel;
 end;
 
 procedure TFrameStats.OnFrameRendered;
@@ -154,7 +168,8 @@ function TFrameStats.FormatLine(
   const AParticleCount, AOrbCount: Integer;
   const ASimTime: Double): string;
 begin
-  Result := Format(scStatsFormat, [Fps, FrameMs, AParticleCount, AOrbCount, ASimTime]);
+  Result := Format(scStatsFormat,
+    [Fps, FrameMs, AParticleCount, AOrbCount, ASimTime, PlatformLabel, BackendLabel]);
 end;
 
 { TFormMain }
@@ -182,7 +197,8 @@ begin
   FLabelStats.TextSettings.Font.Style := [TFontStyle.fsBold];
   FLabelStats.TextSettings.FontColor := cStatsTextColor;
   FLabelStats.TextSettings.HorzAlign := TTextAlign.Leading;
-  FLabelStats.Text := 'FPS: —';
+  FLabelStats.WordWrap := True;
+  FLabelStats.Text := 'FPS: -';
 
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := Self;
@@ -234,6 +250,8 @@ begin
     FGameLoop.StartLoop;
   end;
 
+  // Backend is registered after GlobalUseSkia + app init
+  FFrameStats.CaptureEnvironment;
   UpdateStatsFooter;
 end;
 

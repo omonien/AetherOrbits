@@ -23,7 +23,8 @@ uses
   AetherOrbits.Main.Form in 'AetherOrbits.Main.Form.pas' {FormMain},
   AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas',
   AetherOrbits.Scene in 'AetherOrbits.Scene.pas',
-  AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas';
+  AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas',
+  AetherOrbits.RuntimeInfo in 'AetherOrbits.RuntimeInfo.pas';
 
 {$R *.res}
 
