@@ -12,7 +12,6 @@ object FormMain: TFormMain
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  OnMouseMove = FormMouseMove
   OnResize = FormResize
   OnShow = FormShow
   DesignerMasterStyle = 0

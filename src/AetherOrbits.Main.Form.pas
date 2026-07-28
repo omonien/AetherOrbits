@@ -68,7 +68,6 @@ type
     procedure FormCreate(ASender: TObject);
     procedure FormDestroy(ASender: TObject);
     procedure FormShow(ASender: TObject);
-    procedure FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
     procedure FormResize(ASender: TObject);
     procedure PreferredSegClick(ASender: TObject);
   private
@@ -92,6 +91,9 @@ type
       const ACanvas: ISkCanvas;
       const ADest: TRectF;
       const AOpacity: Single);
+    procedure DoPaintBoxMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
+    procedure DoPaintBoxMouseDown(ASender: TObject; AButton: TMouseButton;
+      AShift: TShiftState; AX, AY: Single);
     procedure UpdateStatsFooter;
     procedure ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
   end;
@@ -164,8 +166,14 @@ begin
   FPaintBox := TSkPaintBox.Create(Self);
   FPaintBox.Parent := LayoutScene;
   FPaintBox.Align := TAlignLayout.Client;
-  FPaintBox.HitTest := False;
+  // HitTest must be True so pointer events hit the scene. With HitTest=False
+  // FMX delivers moves to LayoutScene, not Form.OnMouseMove — no mouse influence.
+  FPaintBox.HitTest := True;
+  FPaintBox.CanFocus := False;
   FPaintBox.OnDraw := DoPaintBoxDraw;
+  FPaintBox.OnMouseMove := DoPaintBoxMouseMove;
+  FPaintBox.OnMouseDown := DoPaintBoxMouseDown;
+  LayoutScene.HitTest := False;
 
   // Ensure bar colors survive platform style injection.
   RectPreferredBg.Fill.Color := cBarBg;
@@ -308,19 +316,32 @@ begin
   end;
 end;
 
-procedure TFormMain.FormMouseMove(ASender: TObject; AShift: TShiftState; AX, AY: Single);
-var
-  LLocal: TPointF;
+procedure TFormMain.DoPaintBoxMouseMove(
+  ASender: TObject;
+  AShift: TShiftState;
+  AX, AY: Single);
 begin
-  if not Assigned(FScene) or not Assigned(FPaintBox) then
+  if not Assigned(FScene) then
   begin
     Exit;
   end;
-  // Form client → screen → paint-box local (preferred bar sits above LayoutScene).
-  LLocal := FPaintBox.ScreenToLocal(ClientToScreen(TPointF.Create(AX, AY)));
-  if FPaintBox.LocalRect.Contains(LLocal) then
+  // Paint-box local coords match the scene/render surface.
+  FScene.SetMousePosition(TPointF.Create(AX, AY));
+end;
+
+procedure TFormMain.DoPaintBoxMouseDown(
+  ASender: TObject;
+  AButton: TMouseButton;
+  AShift: TShiftState;
+  AX, AY: Single);
+begin
+  if not Assigned(FScene) then
   begin
-    FScene.SetMousePosition(LLocal);
+    Exit;
+  end;
+  if AButton = TMouseButton.mbLeft then
+  begin
+    FScene.PointerDown(TPointF.Create(AX, AY));
   end;
 end;
 
