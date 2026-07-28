@@ -41,3 +41,8 @@
 *.bpl   binary
 *.dll   binary
 *.exe   binary
+*.png   binary
+*.gif   binary
+*.mp4   binary
+*.jpg   binary
+*.jpeg  binary
