@@ -167,3 +167,12 @@ game engine.
 | [`src/AetherOrbits.Main.Form.pas`](../src/AetherOrbits.Main.Form.pas) | Paint box + Skia stats overlay |
 | [`src/AetherOrbits.RuntimeInfo.pas`](../src/AetherOrbits.RuntimeInfo.pas) | Platform / backend labels |
 | [`GameLoop.md`](GameLoop.md) | Loop kernel deep-dive |
+
+## 6. Multi-line HUD text: do not use `SplitString` with `sLineBreak`
+
+`System.StrUtils.SplitString(S, Delimiters)` treats *each character* of
+`Delimiters` as a separator. Passing `sLineBreak` (CR+LF on Windows) therefore
+splits into three parts: `line1`, **empty**, `line2`. Drawing only indices
+0 and 1 drops the platform/backend line and leaves a blank (dark) second row.
+
+Use `TStringList.Text := S` or `S.Split([sLineBreak])` instead.

@@ -298,29 +298,47 @@ var
   LBar: TRectF;
   LPaint: ISkPaint;
   LFont: ISkFont;
-  LLines: TArray<string>;
+  LLines: TStringList;
   LY: Single;
+  i: Integer;
 begin
   LBar := TRectF.Create(ADest.Left, ADest.Bottom - cStatsPanelHeight, ADest.Right, ADest.Bottom);
 
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
+  LPaint.Style := TSkPaintStyle.Fill;
   LPaint.Color := cStatsBarColor;
   ACanvas.DrawRect(LBar, LPaint);
 
-  LFont := TSkFont.Create(TSkTypeface.MakeDefault, cStatsFontSize);
-  LPaint.Color := cStatsTextColor;
+  // Do not use SplitString(..., sLineBreak): it treats the delimiter as a set of
+  // characters, so CRLF yields an empty middle line and drops the backend row.
+  LLines := TStringList.Create;
+  try
+    LLines.Text := FStatsText;
+    LFont := TSkFont.Create(TSkTypeface.MakeDefault, cStatsFontSize);
+    LPaint.Color := cStatsTextColor;
 
-  LLines := SplitString(FStatsText, sLineBreak);
-  LY := LBar.Top + cStatsLine1Y;
-  if Length(LLines) > 0 then
-  begin
-    ACanvas.DrawSimpleText(LLines[0], LBar.Left + cStatsTextPadX, LY, LFont, LPaint);
-  end;
-  if Length(LLines) > 1 then
-  begin
-    LY := LBar.Top + cStatsLine2Y;
-    ACanvas.DrawSimpleText(LLines[1], LBar.Left + cStatsTextPadX, LY, LFont, LPaint);
+    for i := 0 to Min(1, LLines.Count - 1) do
+    begin
+      if i = 0 then
+        LY := LBar.Top + cStatsLine1Y
+      else
+        LY := LBar.Top + cStatsLine2Y;
+
+      if LLines[i] <> '' then
+      begin
+        // Re-assert fill color each line (some Skia backends keep paint state)
+        LPaint.Color := cStatsTextColor;
+        ACanvas.DrawSimpleText(
+          LLines[i],
+          LBar.Left + cStatsTextPadX,
+          LY,
+          LFont,
+          LPaint);
+      end;
+    end;
+  finally
+    LLines.Free;
   end;
 end;
 
