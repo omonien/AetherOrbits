@@ -100,10 +100,12 @@ end;
 procedure TAetherSceneTests.SetMousePosition_IsStored;
 begin
   FScene.Initialize(100, 100);
+  Assert.IsFalse(FScene.MouseActive, 'Pointer field inactive until first move');
   FScene.SetMousePosition(TPointF.Create(42, 24));
 
   Assert.AreEqual(42.0, FScene.Mouse.X, 0.01);
   Assert.AreEqual(24.0, FScene.Mouse.Y, 0.01);
+  Assert.IsTrue(FScene.MouseActive);
 end;
 
 procedure TAetherSceneTests.PointerDown_SpawnsBurstParticles;

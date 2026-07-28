@@ -76,6 +76,7 @@ type
     FOrbs: TArray<TOrb>;
     FTime: Double;
     FMouse: TPointF;
+    FMouseActive: Boolean;
     FCenter: TPointF;
     FViewportWidth: Single;
     FViewportHeight: Single;
@@ -85,6 +86,8 @@ type
     procedure InitializeOrbs;
     procedure SeedInitialParticles;
     procedure RemoveParticleAt(const AIndex: Integer);
+    /// <summary>Instant velocity kick away from APosition (visible on pointer move).</summary>
+    procedure ApplyRadialImpulse(const APosition: TPointF; const AStrength: Single);
     function GetOrbCount: Integer;
     function GetOrb(const AIndex: Integer): TOrb;
   public
@@ -125,6 +128,8 @@ type
     property Time: Double read FTime;
     property Center: TPointF read FCenter;
     property Mouse: TPointF read FMouse;
+    /// <summary>True after the first pointer move/click (field is inactive until then).</summary>
+    property MouseActive: Boolean read FMouseActive;
     property ViewportWidth: Single read FViewportWidth;
     property ViewportHeight: Single read FViewportHeight;
     /// <summary>Live particle count; only Particles[0..Count-1] are valid.</summary>
@@ -141,9 +146,12 @@ const
   /// <summary>Hard cap — spawn is skipped when full (keeps load bounded).</summary>
   cMaxParticles = 500;
   cInitialParticleCount = 120;
-  cMouseInfluenceRadius = 200.0;
-  /// <summary>Strong enough to read while moving; was too weak to notice.</summary>
-  cMouseRepulsionStrength = 95.0;
+  cMouseInfluenceRadius = 260.0;
+  /// <summary>Continuous field acceleration (units/s²) while pointer is active.</summary>
+  cMouseRepulsionStrength = 520.0;
+  /// <summary>Extra kick per pointer-move event (scaled by move distance).</summary>
+  cMouseMoveImpulse = 2.8;
+  cMouseMoveImpulseMax = 90.0;
   cClickBurstCount = 14;
   cClickBurstForce = 1.4;
   cCenterPullStrength = 4.0;
@@ -182,6 +190,7 @@ begin
   FViewportWidth := 0;
   FViewportHeight := 0;
   FMouse := TPointF.Zero;
+  FMouseActive := False;
   FCenter := TPointF.Zero;
 end;
 
@@ -219,7 +228,10 @@ end;
 procedure TAetherScene.Initialize(const AWidth, AHeight: Single);
 begin
   SetViewport(AWidth, AHeight);
+  // Start inactive at center so the field does not permanently blow the middle
+  // until the user actually moves/clicks the pointer.
   FMouse := FCenter;
+  FMouseActive := False;
   FTime := 0;
   FParticleCount := 0;
   SetLength(FParticles, cInitialParticleCount);
@@ -228,9 +240,56 @@ begin
   FInitialized := True;
 end;
 
-procedure TAetherScene.SetMousePosition(const APosition: TPointF);
+procedure TAetherScene.ApplyRadialImpulse(
+  const APosition: TPointF;
+  const AStrength: Single);
+var
+  i: Integer;
+  LParticle: TParticle;
+  LAway: TPointF;
+  LDistance: Single;
+  LFalloff: Single;
 begin
+  if (not FInitialized) or (AStrength <= 0) then
+  begin
+    Exit;
+  end;
+
+  for i := 0 to FParticleCount - 1 do
+  begin
+    LParticle := FParticles[i];
+    LAway := LParticle.Position - APosition;
+    LDistance := LAway.Length;
+    if (LDistance <= cMinVectorLength) or (LDistance >= cMouseInfluenceRadius) then
+    begin
+      Continue;
+    end;
+    LFalloff := 1 - LDistance / cMouseInfluenceRadius;
+    LParticle.Velocity := LParticle.Velocity + LAway.Normalize * (AStrength * LFalloff);
+    FParticles[i] := LParticle;
+  end;
+end;
+
+procedure TAetherScene.SetMousePosition(const APosition: TPointF);
+var
+  LMove: Single;
+  LImpulse: Single;
+begin
+  LMove := (APosition - FMouse).Length;
   FMouse := APosition;
+  FMouseActive := True;
+
+  if not FInitialized then
+  begin
+    Exit;
+  end;
+
+  // Immediate kick on pointer motion — continuous field * dt alone is easy to miss.
+  if LMove > 0.5 then
+  begin
+    LImpulse := Min(cMouseMoveImpulseMax, LMove * cMouseMoveImpulse);
+    ApplyRadialImpulse(APosition, LImpulse);
+  end;
 end;
 
 procedure TAetherScene.PointerDown(const APosition: TPointF);
@@ -238,11 +297,13 @@ var
   i: Integer;
 begin
   FMouse := APosition;
+  FMouseActive := True;
   if not FInitialized then
   begin
     Exit;
   end;
-  // Visible click/tap feedback: spray particles outward from the pointer.
+  // Visible click/tap feedback: spray + shove existing particles.
+  ApplyRadialImpulse(APosition, cMouseMoveImpulseMax);
   for i := 1 to cClickBurstCount do
   begin
     SpawnParticle(APosition, cClickBurstForce);
@@ -352,13 +413,17 @@ begin
       Continue;
     end;
 
-    LToMouse := LParticle.Position - FMouse;
-    LDistance := LToMouse.Length;
-    if (LDistance > cMinVectorLength) and (LDistance < cMouseInfluenceRadius) then
+    // Continuous soft field only after the pointer has interacted (move/click).
+    if FMouseActive then
     begin
-      LForce := LToMouse.Normalize *
-        (1 - LDistance / cMouseInfluenceRadius) * cMouseRepulsionStrength;
-      LParticle.Velocity := LParticle.Velocity + LForce * ADeltaTime;
+      LToMouse := LParticle.Position - FMouse;
+      LDistance := LToMouse.Length;
+      if (LDistance > cMinVectorLength) and (LDistance < cMouseInfluenceRadius) then
+      begin
+        LForce := LToMouse.Normalize *
+          (1 - LDistance / cMouseInfluenceRadius) * cMouseRepulsionStrength;
+        LParticle.Velocity := LParticle.Velocity + LForce * ADeltaTime;
+      end;
     end;
 
     LToCenter := FCenter - LParticle.Position;
