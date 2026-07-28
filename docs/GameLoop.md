@@ -76,3 +76,7 @@ If `Root = nil`, FMX runs a **one-shot immediate** animation (`ProcessAnimation`
 `TGameLoop.Create` parents itself to the owner when the owner is a `TFmxObject`. Call `StartLoop` from **OnShow** (or after the form is visible), not only from OnCreate.
 
 `StartLoop` raises `EInvalidOpException` if `Root` is still nil — fail loud instead of a silent freeze.
+
+## Related documentation
+
+- [FMX + Skia quirks](FMX-Skia-Gotchas.md) — Metal, Root, hybrid UI vs self-rendered HUD

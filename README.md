@@ -149,21 +149,16 @@ AetherOrbits/
 Or open `AetherOrbits.groupproj` in the IDE.
 
 
-## macOS performance (Metal)
 
-On macOS, Skia defaults to **CPU raster** unless Metal is enabled. This demo sets:
+## FMX + Skia quirks (read this on macOS)
 
-```pascal
-GlobalUseSkia := True;
-GlobalUseSkiaRasterWhenAvailable := False;
-{$IF Defined(MACOS) or Defined(IOS)}
-GlobalUseMetal := True;  // required for Skia Metal GPU canvas
-{$ENDIF}
-```
+Hybrid FMX controls + full-window Skia (especially **Metal**) has sharp edges:
+Display Link `Root`, macOS **`GlobalUseMetal` default False**, and FMX labels
+vanishing over a Skia paint box. **Self-rendered game views** (draw world + HUD
+in one Skia pass) avoid most of the UI compositing issues.
 
-Without `GlobalUseMetal`, the footer shows `Skia Raster (CPU)` and full-scene particle
-drawing often stays around single-digit FPS (especially on Intel Macs / remote PAServer).
-With Metal you should see `Skia Metal (GPU)` and much higher frame rates.
+Full write-up: **[`docs/FMX-Skia-Gotchas.md`](docs/FMX-Skia-Gotchas.md)**
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
