@@ -88,7 +88,7 @@ end;
 
 function TFormMain.GetSceneViewportHeight: Single;
 begin
-  Result := Max(1, FPaintBox.Height - cStatsHudHeight);
+  Result := Max(1, FPaintBox.Height - GetStatsHudHeight(FPaintBox.Width));
 end;
 
 procedure TFormMain.SyncViewportFromPaintBox;
@@ -188,7 +188,8 @@ begin
   FStatsHud.RefreshText(
     FScene.ParticleCount,
     FScene.OrbCount,
-    FScene.Time);
+    FScene.Time,
+    FPaintBox.Width);
 end;
 
 procedure TFormMain.DoPaintBoxDraw(
@@ -200,7 +201,7 @@ var
   LSceneDest: TRectF;
 begin
   LSceneDest := ADest;
-  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - cStatsHudHeight);
+  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - GetStatsHudHeight(ADest.Width));
   TAetherSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
   TStatsHudPainter.Draw(ACanvas, ADest, FStatsHud.Text);
 end;

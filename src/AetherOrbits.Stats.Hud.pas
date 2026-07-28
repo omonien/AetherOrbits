@@ -4,8 +4,8 @@
 /// </summary>
 ///
 /// <remarks>
-/// Presentation only. Platform/backend/CPU sampling live in AetherOrbits.SystemInfo.
-/// Drawn as a Skia overlay so the HUD stays visible under Metal.
+/// Presentation only. Adapts font size, line count, and bar height to surface
+/// width (phone-friendly). System diagnostics live in AetherOrbits.SystemInfo.
 /// </remarks>
 ///
 /// <copyright>
@@ -27,13 +27,14 @@ uses
   System.Skia,
   AetherOrbits.SystemInfo;
 
-const
-  /// <summary>Height reserved for the stats bar (layout + overlay).</summary>
-  cStatsHudHeight = 44;
+/// <summary>
+/// Height of the stats bar for a given surface width (responsive).
+/// </summary>
+function GetStatsHudHeight(const ASurfaceWidth: Single): Single;
 
 type
   /// <summary>
-  /// Rolling FPS / frame-time / CPU samples and formatted two-line text.
+  /// Rolling FPS / frame-time / CPU samples and multi-line HUD text.
   /// </summary>
   TStatsHudModel = record
   private
@@ -50,18 +51,21 @@ type
     FLogicalCpuCount: Integer;
     FCpuSampler: TProcessCpuSampler;
     FText: string;
+    FSurfaceWidth: Single;
   public
     procedure Reset;
-    /// <summary>Capture platform + backend once after app/canvas init.</summary>
     procedure CaptureEnvironment;
     procedure OnFrameRendered;
     function ShouldRefresh(const ADeltaTime: Double): Boolean;
+    /// <summary>Rebuild text; ASurfaceWidth selects compact vs wide layout.</summary>
     procedure RefreshText(
       const AParticleCount, AOrbCount: Integer;
-      const ASimTime: Double);
+      const ASimTime: Double;
+      const ASurfaceWidth: Single);
     property Text: string read FText;
     property Fps: Integer read FFps;
     property FrameMs: Double read FFrameMs;
+    property SurfaceWidth: Single read FSurfaceWidth;
   end;
 
   /// <summary>
@@ -81,13 +85,43 @@ const
   cStatsRefreshInterval = 0.25;
   cStatsBarColor = $FF0B1220;
   cStatsTextColor = $FFE8EEF8;
-  cStatsFontSize = 12;
-  cStatsTextPadX = 12;
-  cStatsLine1Y = 16;
-  cStatsLine2Y = 34;
-  scStatsFormat =
-    'FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s' + sLineBreak +
-    'Platform: %s  |  Backend: %s';
+  cStatsTextPadX = 10;
+  cStatsPadTop = 12;
+  cStatsLineStep = 14;
+  cStatsPadBottom = 8;
+  cNarrowWidth = 480;
+  cMediumWidth = 720;
+
+function IsNarrow(const AWidth: Single): Boolean;
+begin
+  Result := AWidth < cNarrowWidth;
+end;
+
+function IsMedium(const AWidth: Single): Boolean;
+begin
+  Result := (AWidth >= cNarrowWidth) and (AWidth < cMediumWidth);
+end;
+
+function FontSizeForWidth(const AWidth: Single): Single;
+begin
+  if IsNarrow(AWidth) then
+    Result := 10
+  else if IsMedium(AWidth) then
+    Result := 11
+  else
+    Result := 12;
+end;
+
+function GetStatsHudHeight(const ASurfaceWidth: Single): Single;
+begin
+  // Narrow phones: 4 lines; medium: 3; wide: 2
+  if IsNarrow(ASurfaceWidth) then
+    Result := cStatsPadTop + 4 * cStatsLineStep + cStatsPadBottom
+  else if IsMedium(ASurfaceWidth) then
+    Result := cStatsPadTop + 3 * cStatsLineStep + cStatsPadBottom
+  else
+    Result := cStatsPadTop + 2 * cStatsLineStep + cStatsPadBottom;
+end;
 
 { TStatsHudModel }
 
@@ -105,6 +139,7 @@ begin
   FCpuPercentOfOneCore := 0;
   FLogicalCpuCount := GetLogicalProcessorCount;
   FCpuSampler.Reset;
+  FSurfaceWidth := 800;
   FText := 'FPS: -';
 end;
 
@@ -146,10 +181,13 @@ end;
 
 procedure TStatsHudModel.RefreshText(
   const AParticleCount, AOrbCount: Integer;
-  const ASimTime: Double);
+  const ASimTime: Double;
+  const ASurfaceWidth: Single);
 var
   LOfMachine: Double;
+  LLines: TStringList;
 begin
+  FSurfaceWidth := ASurfaceWidth;
   FCpuPercentOfOneCore := FCpuSampler.Sample;
   if FLogicalCpuCount < 1 then
   begin
@@ -157,9 +195,40 @@ begin
   end;
   LOfMachine := FCpuPercentOfOneCore / FLogicalCpuCount;
 
-  FText := Format(scStatsFormat,
-    [FFps, FFrameMs, FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount,
-     AParticleCount, AOrbCount, ASimTime, FPlatformLabel, FBackendLabel]);
+  LLines := TStringList.Create;
+  try
+    if IsNarrow(ASurfaceWidth) then
+    begin
+      // Phone: short tokens, one topic per line
+      LLines.Add(Format('FPS: %d  |  Frame: %.0f ms  |  CPU: %.0f%%/core',
+        [FFps, FFrameMs, FCpuPercentOfOneCore]));
+      LLines.Add(Format('CPU: %.0f%% of %d cores  |  P: %d  |  Orbs: %d  |  Sim: %.1fs',
+        [LOfMachine, FLogicalCpuCount, AParticleCount, AOrbCount, ASimTime]));
+      LLines.Add('Platform: ' + FPlatformLabel);
+      LLines.Add('Backend: ' + FBackendLabel);
+    end
+    else if IsMedium(ASurfaceWidth) then
+    begin
+      LLines.Add(Format('FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)',
+        [FFps, FFrameMs, FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount]));
+      LLines.Add(Format('Particles: %d  |  Orbs: %d  |  Sim: %.1f s',
+        [AParticleCount, AOrbCount, ASimTime]));
+      LLines.Add(Format('Platform: %s  |  Backend: %s',
+        [FPlatformLabel, FBackendLabel]));
+    end
+    else
+    begin
+      LLines.Add(Format(
+        'FPS: %d  |  Frame: %.1f ms  |  CPU: %.0f%% of 1 core (%.0f%% of %d)  |  Particles: %d  |  Orbs: %d  |  Sim: %.1f s',
+        [FFps, FFrameMs, FCpuPercentOfOneCore, LOfMachine, FLogicalCpuCount,
+         AParticleCount, AOrbCount, ASimTime]));
+      LLines.Add(Format('Platform: %s  |  Backend: %s',
+        [FPlatformLabel, FBackendLabel]));
+    end;
+    FText := LLines.Text.Trim;
+  finally
+    LLines.Free;
+  end;
 end;
 
 { TStatsHudPainter }
@@ -173,6 +242,8 @@ var
   LPaint: ISkPaint;
   LFont: ISkFont;
   LLines: TStringList;
+  LHeight: Single;
+  LFontSize: Single;
   LY: Single;
   i: Integer;
 begin
@@ -181,7 +252,9 @@ begin
     Exit;
   end;
 
-  LBar := TRectF.Create(ADest.Left, ADest.Bottom - cStatsHudHeight, ADest.Right, ADest.Bottom);
+  LHeight := GetStatsHudHeight(ADest.Width);
+  LFontSize := FontSizeForWidth(ADest.Width);
+  LBar := TRectF.Create(ADest.Left, ADest.Bottom - LHeight, ADest.Right, ADest.Bottom);
 
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
@@ -189,30 +262,26 @@ begin
   LPaint.Color := cStatsBarColor;
   ACanvas.DrawRect(LBar, LPaint);
 
-  // TStringList.Text handles CRLF; do not use SplitString with sLineBreak.
   LLines := TStringList.Create;
   try
     LLines.Text := AText;
-    LFont := TSkFont.Create(TSkTypeface.MakeDefault, cStatsFontSize);
+    LFont := TSkFont.Create(TSkTypeface.MakeDefault, LFontSize);
     LPaint.Color := cStatsTextColor;
 
-    for i := 0 to Min(1, LLines.Count - 1) do
+    for i := 0 to LLines.Count - 1 do
     begin
-      if i = 0 then
-        LY := LBar.Top + cStatsLine1Y
-      else
-        LY := LBar.Top + cStatsLine2Y;
-
-      if LLines[i] <> '' then
+      if LLines[i] = '' then
       begin
-        LPaint.Color := cStatsTextColor;
-        ACanvas.DrawSimpleText(
-          LLines[i],
-          LBar.Left + cStatsTextPadX,
-          LY,
-          LFont,
-          LPaint);
+        Continue;
       end;
+      LY := LBar.Top + cStatsPadTop + i * cStatsLineStep;
+      LPaint.Color := cStatsTextColor;
+      ACanvas.DrawSimpleText(
+        LLines[i],
+        LBar.Left + cStatsTextPadX,
+        LY,
+        LFont,
+        LPaint);
     end;
   finally
     LLines.Free;

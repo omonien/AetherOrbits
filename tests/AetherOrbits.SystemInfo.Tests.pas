@@ -23,6 +23,8 @@ type
     [Test]
     procedure HostPlatformLabel_IsNonEmpty;
     [Test]
+    procedure HostPlatformLabel_OmitsBuildZero;
+    [Test]
     procedure RenderBackendLabel_IsNonEmpty;
     [Test]
     procedure LogicalProcessorCount_AtLeastOne;
@@ -35,6 +37,14 @@ implementation
 procedure TSystemInfoTests.HostPlatformLabel_IsNonEmpty;
 begin
   Assert.IsTrue(GetHostPlatformLabel <> '', 'Platform label empty');
+end;
+
+procedure TSystemInfoTests.HostPlatformLabel_OmitsBuildZero;
+begin
+  // TOSVersion.Build is often 0 on iOS/macOS; never show a useless "(build 0)".
+  Assert.IsFalse(
+    GetHostPlatformLabel.Contains('(build 0)'),
+    'Platform label must omit build when Build is 0');
 end;
 
 procedure TSystemInfoTests.RenderBackendLabel_IsNonEmpty;

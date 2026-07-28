@@ -7,6 +7,9 @@
 /// Data only — no UI. The stats HUD (AetherOrbits.Stats.Hud) formats and draws
 /// these values. Call GetActiveRenderBackendLabel after Application.Initialize
 /// and GlobalUseSkia setup.
+///
+/// Architecture conditionals check iOS before macOS: Delphi defines MACOS on
+/// both, so MACOS-first would mislabel iOS devices as macOS.
 /// </remarks>
 ///
 /// <copyright>
@@ -20,6 +23,7 @@ interface
 
 /// <summary>
 /// Human-readable host platform (OS + CPU architecture of this binary).
+/// Omits build number when TOSVersion.Build is 0 (common on iOS/macOS).
 /// </summary>
 function GetHostPlatformLabel: string;
 
@@ -81,7 +85,18 @@ var
 
 function GetArchitectureLabel: string;
 begin
-{$IF Defined(WIN64)}
+  // iOS before macOS: on iOS targets Delphi also defines MACOS.
+{$IF Defined(IOS64)}
+  Result := 'iOS ARM64';
+{$ELSEIF Defined(IOS32)}
+  Result := 'iOS ARM';
+{$ELSEIF Defined(IOS) and Defined(CPUARM64)}
+  Result := 'iOS ARM64';
+{$ELSEIF Defined(IOS) and Defined(CPUARM)}
+  Result := 'iOS ARM';
+{$ELSEIF Defined(IOS)}
+  Result := 'iOS';
+{$ELSEIF Defined(WIN64)}
   Result := 'Win64';
 {$ELSEIF Defined(WIN32)}
   Result := 'Win32';
@@ -97,12 +112,6 @@ begin
   Result := 'Android64';
 {$ELSEIF Defined(ANDROID32)}
   Result := 'Android32';
-{$ELSEIF Defined(IOS64)}
-  Result := 'iOS64';
-{$ELSEIF Defined(IOS32)}
-  Result := 'iOS32';
-{$ELSEIF Defined(IOS)}
-  Result := 'iOS';
 {$ELSEIF Defined(ANDROID)}
   Result := 'Android';
 {$ELSE}
@@ -111,9 +120,16 @@ begin
 end;
 
 function GetHostPlatformLabel: string;
+var
+  LOs: string;
 begin
-  Result := Format('%s - %s %d.%d (build %d)',
-    [GetArchitectureLabel, TOSVersion.Name, TOSVersion.Major, TOSVersion.Minor, TOSVersion.Build]);
+  // TOSVersion.Build is reliable on Windows; often 0 on iOS/macOS — omit then.
+  LOs := Format('%s %d.%d', [TOSVersion.Name, TOSVersion.Major, TOSVersion.Minor]);
+  if TOSVersion.Build > 0 then
+  begin
+    LOs := LOs + Format(' (build %d)', [TOSVersion.Build]);
+  end;
+  Result := Format('%s - %s', [GetArchitectureLabel, LOs]);
 end;
 
 { Skia / FMX canvas backend }
@@ -247,7 +263,6 @@ var
   LTicksPerSec: LongInt;
   LTicks: clock_t;
 begin
-  // Delphi macOS RTL has no Posix.SysResource; use POSIX times(2).
   FillChar(LTms, SizeOf(LTms), 0);
   LTicks := times(LTms);
   if LTicks = clock_t(-1) then
