@@ -148,6 +148,22 @@ AetherOrbits/
 
 Or open `AetherOrbits.groupproj` in the IDE.
 
+
+## macOS performance (Metal)
+
+On macOS, Skia defaults to **CPU raster** unless Metal is enabled. This demo sets:
+
+```pascal
+GlobalUseSkia := True;
+GlobalUseSkiaRasterWhenAvailable := False;
+{$IF Defined(MACOS) or Defined(IOS)}
+GlobalUseMetal := True;  // required for Skia Metal GPU canvas
+{$ENDIF}
+```
+
+Without `GlobalUseMetal`, the footer shows `Skia Raster (CPU)` and full-scene particle
+drawing often stays around single-digit FPS (especially on Intel Macs / remote PAServer).
+With Metal you should see `Skia Metal (GPU)` and much higher frame rates.
 ## License
 
 MIT — see [LICENSE](LICENSE).

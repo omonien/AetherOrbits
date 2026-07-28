@@ -120,14 +120,35 @@ function GetActiveRenderBackendLabel: string;
 var
   LSkiaClass: TSkCanvasBaseClass;
   LCanvasClass: TCanvasClass;
+  LFlags: string;
 begin
+  LFlags := '';
+  if GlobalUseSkia then
+  begin
+    LFlags := LFlags + ' Skia=on';
+  end;
+{$IF Defined(MACOS) or Defined(IOS)}
+  if GlobalUseMetal then
+  begin
+    LFlags := LFlags + ' Metal=on';
+  end
+  else
+  begin
+    LFlags := LFlags + ' Metal=off';
+  end;
+{$ENDIF}
+  if GlobalUseSkiaRasterWhenAvailable then
+  begin
+    LFlags := LFlags + ' PreferRaster';
+  end;
+
   // Prefer the Skia render-canvas class actually selected at registration
   if GlobalUseSkia then
   begin
     LSkiaClass := DefaultSkiaRenderCanvasClass;
     if LSkiaClass <> nil then
     begin
-      Exit(FriendlyCanvasClassName(LSkiaClass));
+      Exit(FriendlyCanvasClassName(LSkiaClass) + LFlags);
     end;
   end;
 
@@ -135,16 +156,16 @@ begin
   LCanvasClass := TCanvasManager.DefaultCanvas;
   if LCanvasClass <> nil then
   begin
-    Exit(FriendlyCanvasClassName(LCanvasClass));
+    Exit(FriendlyCanvasClassName(LCanvasClass) + LFlags);
   end;
 
   if GlobalUseSkia then
   begin
-    Result := 'Skia (pending registration)';
+    Result := 'Skia (pending registration)' + LFlags;
   end
   else
   begin
-    Result := 'FMX (default)';
+    Result := 'FMX (default)' + LFlags;
   end;
 end;
 
