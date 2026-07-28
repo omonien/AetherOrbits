@@ -1,4 +1,4 @@
-﻿object FormMain: TFormMain
+object FormMain: TFormMain
   Left = 0
   Top = 0
   Caption = 'Aether Orbits - FMX + Skia Game Loop Demo'
@@ -12,5 +12,6 @@
   OnDestroy = FormDestroy
   OnMouseMove = FormMouseMove
   OnResize = FormResize
+  OnShow = FormShow
   DesignerMasterStyle = 0
 end

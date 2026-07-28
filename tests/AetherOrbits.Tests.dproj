@@ -1,15 +1,15 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
-        <ProjectGuid>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</ProjectGuid>
-        <MainSource>AetherOrbits.Tests.dpr</MainSource>
-        <ProjectVersion>20.3</ProjectVersion>
-        <FrameworkType>FMX</FrameworkType>
-        <AppType>Console</AppType>
         <Base>True</Base>
+        <AppType>Console</AppType>
         <Config Condition="'$(Config)'==''">Debug</Config>
+        <FrameworkType>FMX</FrameworkType>
+        <MainSource>AetherOrbits.Tests.dpr</MainSource>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
-        <TargetedPlatforms>3</TargetedPlatforms>
+        <ProjectGuid>{B2C3D4E5-F6A7-8901-BCDE-F12345678901}</ProjectGuid>
         <ProjectName Condition="'$(ProjectName)'==''">AetherOrbits.Tests</ProjectName>
+        <ProjectVersion>20.4</ProjectVersion>
+        <TargetedPlatforms>131</TargetedPlatforms>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -29,18 +29,6 @@
         <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win32)'!=''">
-        <Cfg_1_Win32>true</Cfg_1_Win32>
-        <CfgParent>Cfg_1</CfgParent>
-        <Cfg_1>true</Cfg_1>
-        <Base>true</Base>
-    </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Cfg_1)'=='true') or '$(Cfg_1_Win64)'!=''">
-        <Cfg_1_Win64>true</Cfg_1_Win64>
-        <CfgParent>Cfg_1</CfgParent>
-        <Cfg_1>true</Cfg_1>
-        <Base>true</Base>
-    </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_2)'!=''">
         <Cfg_2>true</Cfg_2>
         <CfgParent>Base</CfgParent>
@@ -48,18 +36,27 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>AetherOrbits_Tests</SanitizedProjectName>
+        <AUP_ACCESS_COARSE_LOCATION>true</AUP_ACCESS_COARSE_LOCATION>
+        <AUP_ACCESS_FINE_LOCATION>true</AUP_ACCESS_FINE_LOCATION>
+        <AUP_CALL_PHONE>true</AUP_CALL_PHONE>
+        <AUP_CAMERA>true</AUP_CAMERA>
+        <AUP_INTERNET>true</AUP_INTERNET>
+        <AUP_READ_EXTERNAL_STORAGE>true</AUP_READ_EXTERNAL_STORAGE>
+        <AUP_READ_PHONE_STATE>true</AUP_READ_PHONE_STATE>
+        <AUP_WRITE_EXTERNAL_STORAGE>true</AUP_WRITE_EXTERNAL_STORAGE>
         <DCC_DcuOutput>..\build\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_ExeOutput>..\build\$(Platform)\$(Config)</DCC_ExeOutput>
-        <DCC_UnitSearchPath>..\libs\DUnitX\Source;..\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_UnitSearchPath>..\libs\DUnitX\Source;..\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
+        <VerInfo_Build>0</VerInfo_Build>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_Keys>CompanyName=Olaf Monien;FileDescription=Aether Orbits Unit Tests;FileVersion=1.0.0.0;InternalName=AetherOrbits.Tests;LegalCopyright=Copyright © 2026 Olaf Monien;LegalTrademarks=;OriginalFilename=AetherOrbits.Tests.exe;ProductName=Aether Orbits;ProductVersion=1.0.0.0;Comments=MIT License</VerInfo_Keys>
+        <VerInfo_Locale>1031</VerInfo_Locale>
         <VerInfo_MajorVer>1</VerInfo_MajorVer>
         <VerInfo_MinorVer>0</VerInfo_MinorVer>
         <VerInfo_Release>0</VerInfo_Release>
-        <VerInfo_Build>0</VerInfo_Build>
-        <VerInfo_Locale>1031</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=Olaf Monien;FileDescription=Aether Orbits Unit Tests;FileVersion=1.0.0.0;InternalName=AetherOrbits.Tests;LegalCopyright=Copyright © 2026 Olaf Monien;LegalTrademarks=;OriginalFilename=AetherOrbits.Tests.exe;ProductName=Aether Orbits;ProductVersion=1.0.0.0;Comments=MIT License</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
@@ -73,8 +70,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
-        <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
+        <DCC_Optimize>false</DCC_Optimize>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
@@ -84,9 +81,6 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="AetherOrbits.GameLoop.Tests.pas"/>
-        <DCCReference Include="AetherOrbits.Scene.Tests.pas"/>
-        <DCCReference Include="AetherOrbits.Main.Form.Smoke.pas"/>
         <DCCReference Include="..\src\AetherOrbits.GameLoop.pas"/>
         <DCCReference Include="..\src\AetherOrbits.Scene.pas"/>
         <DCCReference Include="..\src\AetherOrbits.Scene.Renderer.pas"/>
@@ -94,6 +88,9 @@
             <Form>FormMain</Form>
             <FormType>fmx</FormType>
         </DCCReference>
+        <DCCReference Include="AetherOrbits.GameLoop.Tests.pas"/>
+        <DCCReference Include="AetherOrbits.Scene.Tests.pas"/>
+        <DCCReference Include="AetherOrbits.Main.Form.Smoke.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -116,8 +113,15 @@
                 </Source>
             </Delphi.Personality>
             <Platforms>
+                <Platform value="Android">False</Platform>
+                <Platform value="Android64">False</Platform>
+                <Platform value="Linux64">True</Platform>
+                <Platform value="OSX64">False</Platform>
+                <Platform value="OSXARM64">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
+                <Platform value="iOSDevice64">False</Platform>
+                <Platform value="iOSSimARM64">False</Platform>
             </Platforms>
             <VersionInfo>
                 <VersionInfo Name="IncludeVerInfo">True</VersionInfo>
@@ -140,7 +144,7 @@
                 <VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
                 <VersionInfoKeys Name="InternalName">AetherOrbits.Tests</VersionInfoKeys>
                 <VersionInfoKeys Name="LegalCopyright">Copyright © 2026 Olaf Monien</VersionInfoKeys>
-                <VersionInfoKeys Name="LegalTrademarks"></VersionInfoKeys>
+                <VersionInfoKeys Name="LegalTrademarks"/>
                 <VersionInfoKeys Name="OriginalFilename">AetherOrbits.Tests.exe</VersionInfoKeys>
                 <VersionInfoKeys Name="ProductName">Aether Orbits</VersionInfoKeys>
                 <VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
