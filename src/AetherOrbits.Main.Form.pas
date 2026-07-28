@@ -346,7 +346,21 @@ begin
 end;
 
 procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
+var
+  LLocal: TPointF;
 begin
+  // Poll pointer each tick while over the paint box. Some FMX/Skia paths deliver
+  // MouseDown reliably but starve OnMouseMove unless a button is held — polling
+  // keeps the force field locked to the cursor while hovering.
+  if Assigned(FPaintBox) and FPaintBox.IsMouseOver then
+  begin
+    LLocal := FPaintBox.ScreenToLocal(Screen.MousePos);
+    if FPaintBox.LocalRect.Contains(LLocal) then
+    begin
+      FScene.SetMousePosition(LLocal);
+    end;
+  end;
+
   FScene.Update(ADeltaTime);
 
   if FStatsHud.ShouldRefresh(ADeltaTime) then
