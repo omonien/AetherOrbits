@@ -194,7 +194,7 @@ git submodule update --init --recursive
 
 ### 2. Open in the IDE
 
-Open **`AetherOrbits.groupproj`** in RAD Studio / Delphi 13 (project group for **FireMonkey Animation Demos**).
+Open **`FMXAnimationDemos.groupproj`** in RAD Studio / Delphi 13 (project group for **FireMonkey Animation Demos**).
 
 - Aether Orbits: `src/AetherOrbits/AetherOrbits.dproj`
 - Helios: `src/Helios/Helios.dproj`
@@ -247,7 +247,7 @@ AetherOrbits/                       # GitHub repo name (stable URL)
 │   ├── FMX-Skia-Gotchas.md
 │   └── images/
 ├── libs/DUnitX/                    # Git submodule
-├── AetherOrbits.groupproj
+├── FMXAnimationDemos.groupproj
 ├── LICENSE                         # MIT
 └── README.md
 ```
