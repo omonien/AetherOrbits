@@ -6,6 +6,9 @@
         <Projects Include="src\AetherOrbits.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="src\Helios\Helios.dproj">
+            <Dependencies/>
+        </Projects>
         <Projects Include="tests\AetherOrbits.Tests.dproj">
             <Dependencies/>
         </Projects>
@@ -26,6 +29,15 @@
     <Target Name="AetherOrbits:Make">
         <MSBuild Projects="src\AetherOrbits.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Helios">
+        <MSBuild Projects="src\Helios\Helios.dproj"/>
+    </Target>
+    <Target Name="Helios:Clean">
+        <MSBuild Projects="src\Helios\Helios.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Helios:Make">
+        <MSBuild Projects="src\Helios\Helios.dproj" Targets="Make"/>
+    </Target>
     <Target Name="AetherOrbits_Tests">
         <MSBuild Projects="tests\AetherOrbits.Tests.dproj"/>
     </Target>
@@ -36,13 +48,13 @@
         <MSBuild Projects="tests\AetherOrbits.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="AetherOrbits;AetherOrbits_Tests"/>
+        <CallTarget Targets="AetherOrbits;Helios;AetherOrbits_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="AetherOrbits:Clean;AetherOrbits_Tests:Clean"/>
+        <CallTarget Targets="AetherOrbits:Clean;Helios:Clean;AetherOrbits_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="AetherOrbits:Make;AetherOrbits_Tests:Make"/>
+        <CallTarget Targets="AetherOrbits:Make;Helios:Make;AetherOrbits_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

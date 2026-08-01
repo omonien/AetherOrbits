@@ -32,7 +32,12 @@ uses
   AetherOrbits.GameLoop.Tests in 'AetherOrbits.GameLoop.Tests.pas',
   AetherOrbits.Scene.Tests in 'AetherOrbits.Scene.Tests.pas',
   AetherOrbits.Main.Form.Smoke in 'AetherOrbits.Main.Form.Smoke.pas',
-  AetherOrbits.SystemInfo.Tests in 'AetherOrbits.SystemInfo.Tests.pas';
+  AetherOrbits.SystemInfo.Tests in 'AetherOrbits.SystemInfo.Tests.pas',
+  Helios.Scene in '..\src\Helios\Helios.Scene.pas',
+  Helios.Scene.Renderer in '..\src\Helios\Helios.Scene.Renderer.pas',
+  Helios.Main.Form in '..\src\Helios\Helios.Main.Form.pas' {FormHeliosMain},
+  Helios.Scene.Tests in 'Helios.Scene.Tests.pas',
+  Helios.Main.Form.Smoke in 'Helios.Main.Form.Smoke.pas';
 
 var
   LRunner: ITestRunner;

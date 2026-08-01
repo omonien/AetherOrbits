@@ -9,7 +9,12 @@
 [![GitHub release](https://img.shields.io/github/v/release/omonien/AetherOrbits?include_prereleases&label=release&color=success)](https://github.com/omonien/AetherOrbits/releases)
 [![Stars](https://img.shields.io/github/stars/omonien/AetherOrbits?style=social)](https://github.com/omonien/AetherOrbits/stargazers)
 
-A small **Delphi 13** FireMonkey demo: glowing orbs, particles, and a VSync-driven game loop — rendered with **Skia**, no third-party game engine.
+Two **Delphi 13** FireMonkey demos sharing one Display Link game loop — rendered with **Skia**, no third-party game engine:
+
+| Demo | Project | What it shows |
+|------|---------|----------------|
+| **Aether Orbits** | `src/AetherOrbits.dproj` | Glowing orbs, particle field, Preferred FPS |
+| **Helios** | `src/Helios/Helios.dproj` | Soft-3D solar system, sim speed, pause, trails, click-to-focus |
 
 ---
 
@@ -47,8 +52,9 @@ git submodule update --init --recursive
 
 Open **`AetherOrbits.groupproj`** in RAD Studio / Delphi 13.
 
-- App project: `src/AetherOrbits.dproj`
-- Tests: `tests/AetherOrbits.Tests.dproj`
+- Aether Orbits: `src/AetherOrbits.dproj`
+- Helios (solar system): `src/Helios/Helios.dproj`
+- Tests (both demos): `tests/AetherOrbits.Tests.dproj`
 
 Select a platform (e.g. **Win64**, **OSX64**, **iOS Device 64-bit**) and run.
 
@@ -56,6 +62,7 @@ Select a platform (e.g. **Win64**, **OSX64**, **iOS Device 64-bit**) and run.
 
 ```powershell
 .\build-scripts\DelphiBuildDPROJ.ps1 -Project src\AetherOrbits.dproj -Platform Win64 -Config Debug
+.\build-scripts\DelphiBuildDPROJ.ps1 -Project src\Helios\Helios.dproj -Platform Win64 -Config Debug
 .\build-scripts\DelphiBuildDPROJ.ps1 -Project tests\AetherOrbits.Tests.dproj -Platform Win64 -Config Debug
 .\build\Win64\Debug\AetherOrbits.Tests.exe
 ```
@@ -64,7 +71,7 @@ Output goes to `build/<Platform>/<Config>/` (git-ignored).
 
 ---
 
-## Using the demo
+## Using Aether Orbits
 
 | Control | Action |
 |---------|--------|
@@ -72,6 +79,20 @@ Output goes to `build/<Platform>/<Config>/` (git-ignored).
 | **Click / tap** | Spawns a short particle burst at the pointer |
 | **Preferred FPS** (top bar) | Request 30, 60, or 120 frames per second |
 | **Stats footer** | Live FPS, frame ms, Preferred value, CPU, platform, render backend |
+
+## Using Helios (solar system)
+
+Same frame pipeline (`TGameLoop` + Skia), different scene: a soft-3D solar system (Sun + 8 planets) with perspective projection, orbital trails, and a focus camera.
+
+| Control | Action |
+|---------|--------|
+| **Click / tap a body** | Smooth camera focus on that body + info panel |
+| **Click empty space** / **Overview** | Reset camera to system overview |
+| **Speed** (0.25× / 1× / 5× / 20×) | Simulation time scale |
+| **Pause / Resume** | Freeze orbits (camera ease still runs) |
+| **Trails** | Toggle orbital trail ribbons |
+| **Preferred FPS** | Same Display Link pacing as Aether Orbits |
+| **Stats footer** | FPS, frame ms, sim speed %, body count, platform, backend |
 
 ### Preferred FPS — what to expect
 
@@ -189,8 +210,10 @@ Deep dive: **[docs/GameLoop.md](docs/GameLoop.md)**
 
 ```
 AetherOrbits/
-├── src/                    # Demo app (GameLoop, Scene, Skia renderer, form, HUD)
-├── tests/                  # DUnitX unit + form smoke tests
+├── src/
+│   ├── AetherOrbits.*      # Orbs / particles demo
+│   └── Helios/             # Solar-system demo (reuses GameLoop + HUD)
+├── tests/                  # DUnitX unit + form smoke tests (both demos)
 ├── build-scripts/          # DelphiBuildDPROJ.ps1
 ├── docs/
 │   ├── images/             # README demo GIF / MP4 / still
@@ -207,14 +230,14 @@ AetherOrbits/
 
 | Layer | Unit | Role |
 |-------|------|------|
-| Timing | `AetherOrbits.GameLoop` | Display Link + fixed timestep + Preferred pacing |
-| Simulation | `AetherOrbits.Scene` | Orbs / particles — no UI, no Skia |
-| Drawing | `AetherOrbits.Scene.Renderer` | Skia paint of scene state |
-| Diagnostics | `AetherOrbits.SystemInfo` | Platform, backend, CPU samples |
-| HUD | `AetherOrbits.Stats.Hud` | Footer text + Skia overlay |
-| Shell | `AetherOrbits.Main.Form` | Form, Preferred bar, paint box wiring |
+| Timing | `AetherOrbits.GameLoop` | Display Link + fixed timestep + Preferred pacing (**shared**) |
+| Simulation | `AetherOrbits.Scene` / `Helios.Scene` | Demo state — no UI, no Skia |
+| Drawing | `*.Scene.Renderer` | Skia paint of scene state |
+| Diagnostics | `AetherOrbits.SystemInfo` | Platform, backend, CPU samples (**shared**) |
+| HUD | `AetherOrbits.Stats.Hud` | Footer text + Skia overlay (**shared**) |
+| Shell | `*.Main.Form` | Form chrome, controls, paint box wiring |
 
-Skia draws pixels; it does **not** own the frame clock. The loop does not know about orbs or Skia.
+Skia draws pixels; it does **not** own the frame clock. The loop does not know about orbs, planets, or Skia.
 
 ---
 

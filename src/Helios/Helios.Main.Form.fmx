@@ -1,0 +1,366 @@
+object FormHeliosMain: TFormHeliosMain
+  Left = 0
+  Top = 0
+  Caption = 'Helios - Solar System Demo (FMX + Skia)'
+  ClientHeight = 720
+  ClientWidth = 1280
+  Fill.Kind = Solid
+  Fill.Color = xFF0B1220
+  Position = ScreenCenter
+  FormFactor.Width = 1920
+  FormFactor.Height = 1080
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnResize = FormResize
+  OnShow = FormShow
+  DesignerMasterStyle = 0
+  object LayoutToolbar: TLayout
+    Align = Top
+    Size.Width = 1280.000000000000000000
+    Size.Height = 48.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    object RectToolbarBg: TRectangle
+      Align = Contents
+      Fill.Color = xFF0B1220
+      HitTest = False
+      Size.Width = 1280.000000000000000000
+      Size.Height = 48.000000000000000000
+      Size.PlatformDefault = False
+      Stroke.Kind = None
+    end
+    object RectToolbarBottomLine: TRectangle
+      Align = Bottom
+      Fill.Color = xFF1E2A3C
+      HitTest = False
+      Size.Width = 1280.000000000000000000
+      Size.Height = 1.000000000000000000
+      Size.PlatformDefault = False
+      Stroke.Kind = None
+    end
+    object LayoutToolbarInner: TLayout
+      Align = Client
+      Padding.Left = 12.000000000000000000
+      Padding.Top = 8.000000000000000000
+      Padding.Right = 12.000000000000000000
+      Padding.Bottom = 8.000000000000000000
+      Size.Width = 1280.000000000000000000
+      Size.Height = 47.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      object LabelSpeed: TLabel
+        Align = Left
+        StyledSettings = [Family, Style]
+        Size.Width = 48.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.FontColor = xFF8B9BB4
+        TextSettings.HorzAlign = Leading
+        TextSettings.VertAlign = Center
+        Text = 'Speed'
+        TabOrder = 0
+      end
+      object LayoutSpeedSeg: TLayout
+        Align = Left
+        Size.Width = 220.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 1
+        object RectSpeed025: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Size.Width = 50.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = SpeedSegClick
+          object LabelSpeed025: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 50.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '0.25x'
+            TabOrder = 0
+          end
+        end
+        object RectSpeed1: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF2563A8
+          Position.X = 50.000000000000000000
+          Size.Width = 50.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF3B82C4
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = SpeedSegClick
+          object LabelSpeed1: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 50.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFFE8EEF8
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '1x'
+            TabOrder = 0
+          end
+        end
+        object RectSpeed5: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Position.X = 100.000000000000000000
+          Size.Width = 50.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = SpeedSegClick
+          object LabelSpeed5: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 50.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '5x'
+            TabOrder = 0
+          end
+        end
+        object RectSpeed20: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Position.X = 150.000000000000000000
+          Size.Width = 50.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = SpeedSegClick
+          object LabelSpeed20: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 50.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '20x'
+            TabOrder = 0
+          end
+        end
+      end
+      object RectPause: TRectangle
+        Align = Left
+        Cursor = crHandPoint
+        Fill.Color = xFF151C2A
+        Size.Width = 72.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF2A3A50
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = PauseClick
+        object LabelPause: TLabel
+          Align = Client
+          HitTest = False
+          StyledSettings = [Family, Style]
+          Size.Width = 72.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.FontColor = xFF9AABC4
+          TextSettings.HorzAlign = Center
+          TextSettings.VertAlign = Center
+          Text = 'Pause'
+          TabOrder = 0
+        end
+      end
+      object RectTrails: TRectangle
+        Align = Left
+        Cursor = crHandPoint
+        Fill.Color = xFF2563A8
+        Size.Width = 72.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF3B82C4
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = TrailsClick
+        object LabelTrails: TLabel
+          Align = Client
+          HitTest = False
+          StyledSettings = [Family, Style]
+          Size.Width = 72.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.FontColor = xFFE8EEF8
+          TextSettings.HorzAlign = Center
+          TextSettings.VertAlign = Center
+          Text = 'Trails'
+          TabOrder = 0
+        end
+      end
+      object RectOverview: TRectangle
+        Align = Left
+        Cursor = crHandPoint
+        Fill.Color = xFF151C2A
+        Size.Width = 88.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Color = xFF2A3A50
+        XRadius = 6.000000000000000000
+        YRadius = 6.000000000000000000
+        OnClick = OverviewClick
+        object LabelOverview: TLabel
+          Align = Client
+          HitTest = False
+          StyledSettings = [Family, Style]
+          Size.Width = 88.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.FontColor = xFF9AABC4
+          TextSettings.HorzAlign = Center
+          TextSettings.VertAlign = Center
+          Text = 'Overview'
+          TabOrder = 0
+        end
+      end
+      object LabelPreferred: TLabel
+        Align = Left
+        StyledSettings = [Family, Style]
+        Size.Width = 96.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.FontColor = xFF8B9BB4
+        TextSettings.HorzAlign = Leading
+        TextSettings.VertAlign = Center
+        Text = 'Preferred FPS'
+        TabOrder = 6
+      end
+      object LayoutPreferredSeg: TLayout
+        Align = Left
+        Size.Width = 180.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        TabOrder = 7
+        object RectSeg30: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Size.Width = 54.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg30: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 54.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '30'
+            TabOrder = 0
+          end
+        end
+        object RectSeg60: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF2563A8
+          Position.X = 54.000000000000000000
+          Size.Width = 54.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF3B82C4
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg60: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 54.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFFE8EEF8
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '60'
+            TabOrder = 0
+          end
+        end
+        object RectSeg120: TRectangle
+          Align = Left
+          Cursor = crHandPoint
+          Fill.Color = xFF151C2A
+          Position.X = 108.000000000000000000
+          Size.Width = 54.000000000000000000
+          Size.Height = 31.000000000000000000
+          Size.PlatformDefault = False
+          Stroke.Color = xFF2A3A50
+          XRadius = 6.000000000000000000
+          YRadius = 6.000000000000000000
+          OnClick = PreferredSegClick
+          object LabelSeg120: TLabel
+            Align = Client
+            HitTest = False
+            StyledSettings = [Family, Style]
+            Size.Width = 54.000000000000000000
+            Size.Height = 31.000000000000000000
+            Size.PlatformDefault = False
+            TextSettings.FontColor = xFF9AABC4
+            TextSettings.HorzAlign = Center
+            TextSettings.VertAlign = Center
+            Text = '120'
+            TabOrder = 0
+          end
+        end
+      end
+      object LabelHint: TLabel
+        Align = Client
+        StyledSettings = [Family, Style]
+        Size.Width = 200.000000000000000000
+        Size.Height = 31.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.FontColor = xFF5C6B82
+        TextSettings.HorzAlign = Leading
+        TextSettings.VertAlign = Center
+        Text = '  click body to focus'
+        TabOrder = 8
+      end
+    end
+  end
+  object LayoutScene: TLayout
+    Align = Client
+    Size.Width = 1280.000000000000000000
+    Size.Height = 672.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+  end
+end
