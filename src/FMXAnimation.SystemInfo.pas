@@ -1,10 +1,10 @@
 ﻿/// <summary>
-/// AetherOrbits.SystemInfo
+/// FMXAnimation.SystemInfo
 /// Host/runtime diagnostics: platform, Skia/FMX canvas backend, process CPU.
 /// </summary>
 ///
 /// <remarks>
-/// Data only — no UI. The stats HUD (AetherOrbits.Stats.Hud) formats and draws
+/// Data only — no UI. The stats HUD (FMXAnimation.Stats.Hud) formats and draws
 /// these values. Call GetActiveRenderBackendLabel after Application.Initialize
 /// and GlobalUseSkia setup.
 ///
@@ -17,7 +17,7 @@
 /// Licensed under MIT
 /// </copyright>
 
-unit AetherOrbits.SystemInfo;
+unit FMXAnimation.SystemInfo;
 
 interface
 

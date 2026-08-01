@@ -1,7 +1,7 @@
 ﻿# FMX + Skia quirks (Delphi 13)
 
 This document records platform and framework peculiarities we hit while building
-**Aether Orbits**. They matter when you mix **FireMonkey UI controls** with
+**FireMonkey Animation Demos** (Aether Orbits, Helios). They matter when you mix **FireMonkey UI controls** with
 **Skia** (especially Metal/GPU). They matter far less for a pure game-style
 pipeline that draws everything itself into one surface.
 
@@ -12,7 +12,7 @@ pipeline that draws everything itself into one surface.
 | **Hybrid UI** (forms, labels, panels + Skia paint box) | FMX layout, styles, and Skia form canvas must composite together |
 | **Self-rendered game view** (one full-window `TSkPaintBox` / surface, HUD drawn in Skia) | You own every pixel; FMX control compositing is largely out of the path |
 
-Aether Orbits is a **demo of the hybrid path that gradually moved toward
+The demos follow a **hybrid path that gradually moved toward
 self-rendered HUD** for reliability under Metal. The game loop itself never
 depended on these UI details.
 
@@ -192,10 +192,10 @@ game engine.
 
 | File | Role |
 |------|------|
-| [`src/AetherOrbits.dpr`](../src/AetherOrbits.dpr) | Startup globals (Skia / Metal / raster preference) |
-| [`src/AetherOrbits.GameLoop.pas`](../src/AetherOrbits.GameLoop.pas) | Display Link loop + Root requirement |
-| [`src/AetherOrbits.Main.Form.pas`](../src/AetherOrbits.Main.Form.pas) | Paint box + Skia stats overlay |
-| [`src/AetherOrbits.RuntimeInfo.pas`](../src/AetherOrbits.RuntimeInfo.pas) | Platform / backend labels |
+| [`src/AetherOrbits/AetherOrbits.dpr`](../src/AetherOrbits/AetherOrbits.dpr) | Startup globals (Skia / Metal / raster preference) |
+| [`src/FMXAnimation.GameLoop.pas`](../src/FMXAnimation.GameLoop.pas) | Display Link loop + Root requirement (**shared**) |
+| [`src/AetherOrbits/AetherOrbits.Main.Form.pas`](../src/AetherOrbits/AetherOrbits.Main.Form.pas) | Paint box + Skia stats overlay |
+| [`src/FMXAnimation.SystemInfo.pas`](../src/FMXAnimation.SystemInfo.pas) | Platform / backend labels (**shared**) |
 | [`GameLoop.md`](GameLoop.md) | Loop kernel deep-dive |
 
 ## 6. Multi-line HUD text: do not use `SplitString` with `sLineBreak`

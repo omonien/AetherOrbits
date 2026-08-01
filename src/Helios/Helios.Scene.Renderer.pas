@@ -4,8 +4,26 @@
 /// </summary>
 ///
 /// <remarks>
-/// Reads scene state only. Frame timing stays in AetherOrbits.GameLoop.
-/// Bodies are sorted back-to-front for a simple painter's algorithm.
+/// <para>
+/// <b>Role:</b> read-only view of <c>THeliosScene</c>. Call from paint-box
+/// <c>OnDraw</c>. Never mutates the scene and never owns the frame clock
+/// (that is <c>FMXAnimation.GameLoop</c>).
+/// </para>
+/// <para>
+/// <b>Projection:</b> every world point goes through
+/// <c>THeliosScene.ProjectPoint</c> — the same function used for click
+/// hit-testing — so labels, trails, and discs stay aligned with input.
+/// </para>
+/// <para>
+/// <b>Draw order:</b> space background → starfield → orbit guide rings →
+/// trails → bodies sorted far→near (painter's algorithm) → info panel / hint.
+/// Bodies use soft glow discs + a simple radial gradient fill; Saturn gets an
+/// extra stroke ring.
+/// </para>
+/// <para>
+/// ADest is the scene rect above the stats HUD
+/// (<c>FMXAnimation.DemoShell.GetSceneDestInPaintBox</c>).
+/// </para>
 /// </remarks>
 ///
 /// <copyright>
@@ -90,7 +108,7 @@ begin
     Exit;
   end;
 
-  // Deep space background
+  // --- Background: deep radial vignette ----------------------------------------
   LPaint := TSkPaint.Create;
   LPaint.Shader := TSkShader.MakeGradientRadial(
     ADest.CenterPoint,
@@ -98,7 +116,7 @@ begin
     [$FF04060C, $FF0A1020, $FF121C32]);
   ACanvas.DrawPaint(LPaint);
 
-  // Stable pseudo-random starfield from viewport size (no allocations / flicker).
+  // --- Starfield: LCG seeded by size so stars do not flicker between frames -----
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
   LSeed := Trunc(ADest.Width * 13 + ADest.Height * 7);
@@ -114,7 +132,7 @@ begin
     ACanvas.DrawCircle(LStarX, LStarY, 0.6 + (i mod 3) * 0.35, LPaint);
   end;
 
-  // Orbital guide rings (faint ellipses via sampled world points)
+  // --- Orbit guide rings: sample world circle → project → stroke segments ------
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
   LPaint.Style := TSkPaintStyle.Stroke;
@@ -154,7 +172,7 @@ begin
     end;
   end;
 
-  // Orbital trails
+  // --- Trails: world samples from the scene ring buffer, alpha by age ----------
   if AScene.ShowTrails then
   begin
     LPaint := TSkPaint.Create;

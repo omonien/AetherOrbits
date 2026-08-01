@@ -1,14 +1,16 @@
 ﻿/// <summary>
-/// AetherOrbits.GameLoop
+/// FMXAnimation.GameLoop
 /// Standalone, reusable fixed-timestep game loop for FMX (Delphi 13+).
+/// Core unit of FireMonkey Animation Demos — copy into any FMX project.
 /// </summary>
 ///
 /// <remarks>
 /// <para>
-/// <b>Independence:</b> This unit has no knowledge of the Aether Orbits demo,
-/// scene, Skia, or any form. Dependencies are only System.* and FMX.Ani /
-/// FMX.Types (for TAnimation). Copy this single unit into any FMX project
-/// and wire OnUpdate / OnRender — that is all that is required.
+/// <b>Independence:</b> This unit has no knowledge of any demo scene, Skia,
+/// or form layout. Dependencies are only System.* and FMX.Ani / FMX.Types
+/// (for TAnimation). Copy this single unit into any FMX project and wire
+/// OnUpdate / OnRender — that is all that is required for a VSync-aligned
+/// animation or game loop since Delphi 13's Display Link–driven TAnimation.
 /// </para>
 /// <para>
 /// <b>The core idea (Delphi 13 / Embarcadero FMX):</b> derive from
@@ -62,7 +64,7 @@
 /// Licensed under MIT
 /// </copyright>
 
-unit AetherOrbits.GameLoop;
+unit FMXAnimation.GameLoop;
 
 interface
 

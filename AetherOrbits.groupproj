@@ -3,7 +3,7 @@
         <ProjectGuid>{C3D4E5F6-A7B8-9012-CDEF-123456789012}</ProjectGuid>
     </PropertyGroup>
     <ItemGroup>
-        <Projects Include="src\AetherOrbits.dproj">
+        <Projects Include="src\AetherOrbits\AetherOrbits.dproj">
             <Dependencies/>
         </Projects>
         <Projects Include="src\Helios\Helios.dproj">
@@ -21,13 +21,13 @@
         </BorlandProject>
     </ProjectExtensions>
     <Target Name="AetherOrbits">
-        <MSBuild Projects="src\AetherOrbits.dproj"/>
+        <MSBuild Projects="src\AetherOrbits\AetherOrbits.dproj"/>
     </Target>
     <Target Name="AetherOrbits:Clean">
-        <MSBuild Projects="src\AetherOrbits.dproj" Targets="Clean"/>
+        <MSBuild Projects="src\AetherOrbits\AetherOrbits.dproj" Targets="Clean"/>
     </Target>
     <Target Name="AetherOrbits:Make">
-        <MSBuild Projects="src\AetherOrbits.dproj" Targets="Make"/>
+        <MSBuild Projects="src\AetherOrbits\AetherOrbits.dproj" Targets="Make"/>
     </Target>
     <Target Name="Helios">
         <MSBuild Projects="src\Helios\Helios.dproj"/>

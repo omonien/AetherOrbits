@@ -4,11 +4,9 @@
 /// </summary>
 ///
 /// <remarks>
-/// Wires TGameLoop to TAetherScene and a TSkPaintBox. System diagnostics live
-/// in AetherOrbits.SystemInfo; the stats overlay is AetherOrbits.Stats.Hud.
-/// Preferred FPS segment control sets GlobalPreferredFramesPerSecond and
-/// restarts the game loop so Mac/iOS Display Link re-applies the range.
-/// The bar uses dark Skia-matching chrome (rectangles), not light theme panels.
+/// Form handling only: wires controls, TGameLoop, TAetherScene, and TSkPaintBox.
+/// Shared surface/chrome helpers live in FMXAnimation.DemoShell; simulation and
+/// drawing stay in Scene / Scene.Renderer.
 /// </remarks>
 ///
 /// <copyright>
@@ -21,13 +19,11 @@ unit AetherOrbits.Main.Form;
 interface
 
 uses
-  // System
   System.SysUtils,
   System.Types,
   System.UITypes,
   System.Classes,
   System.Math,
-  // FMX
   FMX.Types,
   FMX.Controls,
   FMX.Controls.Presentation,
@@ -36,19 +32,18 @@ uses
   FMX.Objects,
   FMX.Forms,
   FMX.Graphics,
-  // Skia
   System.Skia,
   FMX.Skia,
-  // Own
-  AetherOrbits.GameLoop,
+  FMXAnimation.GameLoop,
+  FMXAnimation.DemoShell,
+  FMXAnimation.Stats.Hud,
+  FMXAnimation.SystemInfo,
   AetherOrbits.Scene,
-  AetherOrbits.Scene.Renderer,
-  AetherOrbits.Stats.Hud,
-  AetherOrbits.SystemInfo;
+  AetherOrbits.Scene.Renderer;
 
 type
   /// <summary>
-  /// Main demo window: game loop + scene + Skia paint box + stats HUD.
+  /// Main demo window: UI shell for game loop + scene + Skia surface.
   /// </summary>
   TFormMain = class(TForm)
     LayoutPreferred: TLayout;
@@ -78,10 +73,7 @@ type
     FApplyingPreferred: Boolean;
 
     procedure CreateUi;
-    procedure StylePreferredSegment(const ARect: TRectangle; const ALabel: TLabel;
-      const ASelected: Boolean);
     procedure SyncPreferredSegmentsFromGlobal;
-    function GetSceneViewportHeight: Single;
     procedure SyncViewportFromPaintBox;
     procedure EnsureSceneInitialized;
     procedure DoGameUpdate(const ADeltaTime: Double);
@@ -95,7 +87,7 @@ type
     procedure DoPaintBoxMouseDown(ASender: TObject; AButton: TMouseButton;
       AShift: TShiftState; AX, AY: Single);
     procedure UpdateStatsFooter;
-    procedure ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
+    procedure ApplyPreferredFpsFromUi(const AFps: Integer);
   end;
 
 var
@@ -105,39 +97,7 @@ implementation
 
 {$R *.fmx}
 
-const
-  // Match stats HUD chrome (AetherOrbits.Stats.Hud).
-  cBarBg = $FF0B1220;
-  cBarLine = $FF1E2A3C;
-  cSegIdleFill = $FF151C2A;
-  cSegIdleStroke = $FF2A3A50;
-  cSegIdleText = $FF9AABC4;
-  cSegSelFill = $FF2563A8;
-  cSegSelStroke = $FF3B82C4;
-  cSegSelText = $FFE8EEF8;
-  cLabelMuted = $FF8B9BB4;
-  cHintMuted = $FF5C6B82;
-
 { TFormMain }
-
-procedure TFormMain.StylePreferredSegment(
-  const ARect: TRectangle;
-  const ALabel: TLabel;
-  const ASelected: Boolean);
-begin
-  if ASelected then
-  begin
-    ARect.Fill.Color := cSegSelFill;
-    ARect.Stroke.Color := cSegSelStroke;
-    ALabel.TextSettings.FontColor := cSegSelText;
-  end
-  else
-  begin
-    ARect.Fill.Color := cSegIdleFill;
-    ARect.Stroke.Color := cSegIdleStroke;
-    ALabel.TextSettings.FontColor := cSegIdleText;
-  end;
-end;
 
 procedure TFormMain.SyncPreferredSegmentsFromGlobal;
 var
@@ -151,9 +111,9 @@ begin
 
   FApplyingPreferred := True;
   try
-    StylePreferredSegment(RectSeg30, LabelSeg30, LFps = 30);
-    StylePreferredSegment(RectSeg60, LabelSeg60, LFps = 60);
-    StylePreferredSegment(RectSeg120, LabelSeg120, LFps = 120);
+    StyleSegmentChip(RectSeg30, LabelSeg30, LFps = 30);
+    StyleSegmentChip(RectSeg60, LabelSeg60, LFps = 60);
+    StyleSegmentChip(RectSeg120, LabelSeg120, LFps = 120);
   finally
     FApplyingPreferred := False;
   end;
@@ -161,45 +121,27 @@ end;
 
 procedure TFormMain.CreateUi;
 begin
-  // Paint box lives only in LayoutScene (Align=Client). Never parent it to the
-  // form with Align=Client — that can cover LayoutPreferred in z-order.
-  FPaintBox := TSkPaintBox.Create(Self);
-  FPaintBox.Parent := LayoutScene;
-  FPaintBox.Align := TAlignLayout.Client;
-  // HitTest must be True so pointer events hit the scene. With HitTest=False
-  // FMX delivers moves to LayoutScene, not Form.OnMouseMove — no mouse influence.
-  FPaintBox.HitTest := True;
-  FPaintBox.CanFocus := False;
+  // Paint box only under LayoutScene — never form Align=Client (covers toolbar).
+  FPaintBox := CreateClientPaintBox(Self, LayoutScene);
   FPaintBox.OnDraw := DoPaintBoxDraw;
   FPaintBox.OnMouseMove := DoPaintBoxMouseMove;
   FPaintBox.OnMouseDown := DoPaintBoxMouseDown;
-  LayoutScene.HitTest := False;
 
-  // Ensure bar colors survive platform style injection.
-  RectPreferredBg.Fill.Color := cBarBg;
-  RectPreferredBottomLine.Fill.Color := cBarLine;
-  LabelPreferred.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelPreferred.TextSettings.FontColor := cLabelMuted;
-  LabelPreferredHint.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelPreferredHint.TextSettings.FontColor := cHintMuted;
-  LabelSeg30.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSeg60.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSeg120.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
+  RectPreferredBg.Fill.Color := cDemoBarBg;
+  RectPreferredBottomLine.Fill.Color := cDemoBarLine;
+  StyleDemoLabel(LabelPreferred, cDemoLabelMuted);
+  StyleDemoLabel(LabelPreferredHint, cDemoHintMuted);
+  StyleDemoLabel(LabelSeg30, cDemoSegIdleText);
+  StyleDemoLabel(LabelSeg60, cDemoSegIdleText);
+  StyleDemoLabel(LabelSeg120, cDemoSegIdleText);
 
-  // Small gaps between segment chips (Align=Left otherwise packs flush).
   RectSeg60.Margins.Left := 8;
   RectSeg120.Margins.Left := 8;
 
   LayoutPreferred.Visible := True;
   LayoutPreferred.BringToFront;
-  // Hint is desktop-only clutter on phones.
   LabelPreferredHint.Visible := ClientWidth >= 640;
   SyncPreferredSegmentsFromGlobal;
-end;
-
-function TFormMain.GetSceneViewportHeight: Single;
-begin
-  Result := Max(1, FPaintBox.Height - GetStatsHudHeight(FPaintBox.Width));
 end;
 
 procedure TFormMain.SyncViewportFromPaintBox;
@@ -208,8 +150,9 @@ begin
   begin
     Exit;
   end;
-
-  FScene.SetViewport(Max(1, FPaintBox.Width), GetSceneViewportHeight);
+  FScene.SetViewport(
+    Max(1, FPaintBox.Width),
+    GetSceneViewportHeight(FPaintBox.Width, FPaintBox.Height));
 end;
 
 procedure TFormMain.EnsureSceneInitialized;
@@ -220,35 +163,16 @@ begin
   end
   else
   begin
-    FScene.Initialize(Max(1, FPaintBox.Width), GetSceneViewportHeight);
+    FScene.Initialize(
+      Max(1, FPaintBox.Width),
+      GetSceneViewportHeight(FPaintBox.Width, FPaintBox.Height));
   end;
 end;
 
-procedure TFormMain.ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
-var
-  LWasRunning: Boolean;
+procedure TFormMain.ApplyPreferredFpsFromUi(const AFps: Integer);
 begin
-  if GetPreferredFramesPerSecond = AFps then
-  begin
-    SyncPreferredSegmentsFromGlobal;
-    Exit;
-  end;
-
-  SetPreferredFramesPerSecond(AFps);
+  ApplyPreferredFps(AFps, FGameLoop, True, Visible);
   SyncPreferredSegmentsFromGlobal;
-
-  if ARestartLoop and Assigned(FGameLoop) then
-  begin
-    // Mac/iOS CADisplayLink applies preferred range on Subscribe — restart loop.
-    // Windows DWM still needs GameLoop Preferred pacing (see AetherOrbits.GameLoop).
-    LWasRunning := FGameLoop.Running;
-    FGameLoop.StopLoop;
-    if LWasRunning or Visible then
-    begin
-      FGameLoop.StartLoop;
-    end;
-  end;
-
   UpdateStatsFooter;
 end;
 
@@ -268,7 +192,7 @@ begin
   else
     LFps := 60;
 
-  ApplyPreferredFps(LFps, True);
+  ApplyPreferredFpsFromUi(LFps);
 end;
 
 procedure TFormMain.FormCreate(ASender: TObject);
@@ -321,12 +245,10 @@ procedure TFormMain.DoPaintBoxMouseMove(
   AShift: TShiftState;
   AX, AY: Single);
 begin
-  if not Assigned(FScene) then
+  if Assigned(FScene) then
   begin
-    Exit;
+    FScene.SetMousePosition(TPointF.Create(AX, AY));
   end;
-  // Paint-box local coords match the scene/render surface.
-  FScene.SetMousePosition(TPointF.Create(AX, AY));
 end;
 
 procedure TFormMain.DoPaintBoxMouseDown(
@@ -335,11 +257,7 @@ procedure TFormMain.DoPaintBoxMouseDown(
   AShift: TShiftState;
   AX, AY: Single);
 begin
-  if not Assigned(FScene) then
-  begin
-    Exit;
-  end;
-  if AButton = TMouseButton.mbLeft then
+  if Assigned(FScene) and (AButton = TMouseButton.mbLeft) then
   begin
     FScene.PointerDown(TPointF.Create(AX, AY));
   end;
@@ -349,9 +267,7 @@ procedure TFormMain.DoGameUpdate(const ADeltaTime: Double);
 var
   LLocal: TPointF;
 begin
-  // Poll pointer each tick while over the paint box. Some FMX/Skia paths deliver
-  // MouseDown reliably but starve OnMouseMove unless a button is held — polling
-  // keeps the force field locked to the cursor while hovering.
+  // Poll pointer while hovering — some FMX/Skia paths starve OnMouseMove.
   if Assigned(FPaintBox) and FPaintBox.IsMouseOver then
   begin
     LLocal := FPaintBox.ScreenToLocal(Screen.MousePos);
@@ -394,12 +310,8 @@ procedure TFormMain.DoPaintBoxDraw(
   const ACanvas: ISkCanvas;
   const ADest: TRectF;
   const AOpacity: Single);
-var
-  LSceneDest: TRectF;
 begin
-  LSceneDest := ADest;
-  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - GetStatsHudHeight(ADest.Width));
-  TAetherSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
+  TAetherSceneRenderer.Draw(FScene, ACanvas, GetSceneDestInPaintBox(ADest));
   TStatsHudPainter.Draw(ACanvas, ADest, FStatsHud.Text);
 end;
 

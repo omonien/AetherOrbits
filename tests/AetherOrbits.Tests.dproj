@@ -47,7 +47,7 @@
         <DCC_DcuOutput>..\build\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_ExeOutput>..\build\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\libs\DUnitX\Source;..\src;..\src\Helios;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\libs\DUnitX\Source;..\src;..\src\AetherOrbits;..\src\Helios;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <VerInfo_Build>0</VerInfo_Build>
@@ -81,19 +81,20 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="..\src\AetherOrbits.GameLoop.pas"/>
-        <DCCReference Include="..\src\AetherOrbits.Scene.pas"/>
-        <DCCReference Include="..\src\AetherOrbits.Scene.Renderer.pas"/>
-        <DCCReference Include="..\src\AetherOrbits.SystemInfo.pas"/>
-        <DCCReference Include="..\src\AetherOrbits.Stats.Hud.pas"/>
-        <DCCReference Include="..\src\AetherOrbits.Main.Form.pas">
+        <DCCReference Include="..\src\FMXAnimation.GameLoop.pas"/>
+        <DCCReference Include="..\src\FMXAnimation.SystemInfo.pas"/>
+        <DCCReference Include="..\src\FMXAnimation.Stats.Hud.pas"/>
+        <DCCReference Include="..\src\FMXAnimation.DemoShell.pas"/>
+        <DCCReference Include="..\src\AetherOrbits\AetherOrbits.Scene.pas"/>
+        <DCCReference Include="..\src\AetherOrbits\AetherOrbits.Scene.Renderer.pas"/>
+        <DCCReference Include="..\src\AetherOrbits\AetherOrbits.Main.Form.pas">
             <Form>FormMain</Form>
             <FormType>fmx</FormType>
         </DCCReference>
-        <DCCReference Include="AetherOrbits.GameLoop.Tests.pas"/>
+        <DCCReference Include="FMXAnimation.GameLoop.Tests.pas"/>
         <DCCReference Include="AetherOrbits.Scene.Tests.pas"/>
         <DCCReference Include="AetherOrbits.Main.Form.Smoke.pas"/>
-        <DCCReference Include="AetherOrbits.SystemInfo.Tests.pas"/>
+        <DCCReference Include="FMXAnimation.SystemInfo.Tests.pas"/>
         <DCCReference Include="..\src\Helios\Helios.Scene.pas"/>
         <DCCReference Include="..\src\Helios\Helios.Scene.Renderer.pas"/>
         <DCCReference Include="..\src\Helios\Helios.Main.Form.pas">

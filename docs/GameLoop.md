@@ -1,11 +1,14 @@
-# AetherOrbits.GameLoop — standalone FMX game loop (Delphi 13+)
+# FMXAnimation.GameLoop — standalone FMX game loop (Delphi 13+)
+
+Part of **FireMonkey Animation Demos** (repo: [`omonien/AetherOrbits`](https://github.com/omonien/AetherOrbits)).  
+This unit is the reusable core: **copy it into any FMX project** for a VSync-aligned frame loop.
 
 ## Independence
 
-`AetherOrbits.GameLoop.pas` is intentionally **demo-agnostic**:
+`FMXAnimation.GameLoop.pas` is intentionally **demo-agnostic**:
 
 - **Uses:** `System.Classes`, `System.Diagnostics`, `System.SysUtils`, `FMX.Types`, `FMX.Ani`
-- **Does not use:** forms, **Skia**, scene types, or any Aether Orbits–specific code
+- **Does not use:** forms, **Skia**, scene types, or any demo-specific code
 
 Copy the unit into another FMX project, create a `TGameLoop`, assign `OnUpdate` /
 `OnRender`, call `StartLoop`. No other unit from this repository is required.

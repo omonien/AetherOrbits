@@ -1,5 +1,5 @@
 ﻿/// <summary>
-/// AetherOrbits.SystemInfo.Tests
+/// FMXAnimation.SystemInfo.Tests
 /// </summary>
 ///
 /// <copyright>
@@ -7,14 +7,14 @@
 /// Licensed under MIT
 /// </copyright>
 
-unit AetherOrbits.SystemInfo.Tests;
+unit FMXAnimation.SystemInfo.Tests;
 
 interface
 
 uses
   System.SysUtils,
   DUnitX.TestFramework,
-  AetherOrbits.SystemInfo;
+  FMXAnimation.SystemInfo;
 
 type
   [TestFixture]

@@ -4,13 +4,32 @@
 /// </summary>
 ///
 /// <remarks>
-/// Contains only game state and fixed-timestep update logic. No UI, no
-/// rendering. The form owns a TAetherScene and drives Update from TGameLoop;
-/// AetherOrbits.Scene.Renderer draws the state via Skia.
-///
-/// Particles live in a dense prefix of the Particles array (indices
-/// 0..ParticleCount-1). Renderers should iterate that range and treat the
-/// array reference as read-only.
+/// <para>
+/// <b>Role in the stack:</b> pure game state + fixed-timestep update. No FMX
+/// forms, no Skia, no frame clock. The form owns a <c>TAetherScene</c> and
+/// calls <c>Update</c> from <c>TGameLoop.OnUpdate</c>;
+/// <c>AetherOrbits.Scene.Renderer</c> paints the state on <c>OnDraw</c>.
+/// </para>
+/// <para>
+/// <b>Why this split:</b> the simulation stays unit-testable without a GPU or
+/// form, and the renderer can be swapped without touching physics.
+/// </para>
+/// <para>
+/// <b>Particles:</b> dense prefix of <c>Particles[0..ParticleCount-1]</c>.
+/// Dead particles are swap-removed. Renderers must use <c>ParticleCount</c>,
+/// not <c>Length(Particles)</c>, and treat the array as read-only.
+/// </para>
+/// <para>
+/// <b>Orbits:</b> elliptical path via <c>GetOrbWorldPosition</c> (Y scaled).
+/// That function is the single source of truth for both update-time spawns
+/// and the renderer — do not recompute angles in the renderer.
+/// </para>
+/// <para>
+/// <b>Pointer field:</b> inactive until the first move/click so the center is
+/// not permanently cleared on startup. Continuous repulsion uses acceleration
+/// × dt; pointer-move applies an extra impulse so motion is visible even at
+/// low frame rates.
+/// </para>
 /// </remarks>
 ///
 /// <copyright>
@@ -31,27 +50,43 @@ uses
 
 type
   /// <summary>
-  /// Single particle in the scene.
+  /// Single particle in the scene (soft force-field body).
   /// </summary>
+  /// <remarks>
+  /// Life counts down in seconds; when ≤ 0 the particle is swap-removed.
+  /// Hue is a stable random [0..1) used only by the renderer for color bands.
+  /// </remarks>
   TParticle = record
     Position: TPointF;
     Velocity: TPointF;
+    /// <summary>Remaining lifetime in seconds.</summary>
     Life: Single;
+    /// <summary>Initial lifetime; used for alpha fade (Life / MaxLife).</summary>
     MaxLife: Single;
     Size: Single;
+    /// <summary>0..1 color seed for the renderer (not a physics property).</summary>
     Hue: Single;
   end;
 
   /// <summary>
-  /// Orbiting body around the scene center.
+  /// Orbiting body around the scene center (ellipse in screen space).
   /// </summary>
+  /// <remarks>
+  /// Angle advances by Speed × dt. Size is a pulsed display radius derived
+  /// from BaseSize each tick; the renderer never re-derives the pulse.
+  /// </remarks>
   TOrb = record
+    /// <summary>Current orbit angle in radians.</summary>
     Angle: Single;
+    /// <summary>Orbit radius in scene units (from Center).</summary>
     Radius: Single;
+    /// <summary>Angular velocity in rad/s (sign = direction).</summary>
     Speed: Single;
+    /// <summary>Current display radius (BaseSize with pulse).</summary>
     Size: Single;
     BaseSize: Single;
     Color: TAlphaColor;
+    /// <summary>Phase offset for size pulse (keeps orbs desynchronized).</summary>
     Phase: Single;
   end;
 
@@ -377,6 +412,8 @@ begin
 end;
 
 procedure TAetherScene.Update(const ADeltaTime: Double);
+// Fixed-timestep entry (from TGameLoop.OnUpdate). ADeltaTime is the simulation
+// step (default 1/60), not wall-clock frame time. Keep this free of drawing.
 var
   LParticle: TParticle;
   LDistance: Single;
@@ -391,8 +428,10 @@ begin
   end;
 
   FTime := FTime + ADeltaTime;
+  // Recenter every tick so resize via SetViewport is reflected immediately.
   FCenter := TPointF.Create(FViewportWidth * 0.5, FViewportHeight * 0.5);
 
+  // --- Orbs: advance angle + pulse display size --------------------------------
   for var i := 0 to High(FOrbs) do
   begin
     FOrbs[i].Angle := FOrbs[i].Angle + FOrbs[i].Speed * ADeltaTime;
@@ -400,6 +439,7 @@ begin
       (1 + cOrbPulseAmplitude * Sin(FTime * cOrbPulseFrequency + FOrbs[i].Phase));
   end;
 
+  // --- Particles: integrate forces (iterate backward so swap-remove is safe) ---
   var i := FParticleCount - 1;
   while i >= 0 do
   begin
@@ -413,19 +453,21 @@ begin
       Continue;
     end;
 
-    // Continuous soft field only after the pointer has interacted (move/click).
+    // Continuous soft repulsion only after the pointer has interacted.
     if FMouseActive then
     begin
       LToMouse := LParticle.Position - FMouse;
       LDistance := LToMouse.Length;
       if (LDistance > cMinVectorLength) and (LDistance < cMouseInfluenceRadius) then
       begin
+        // Linear falloff: full strength at pointer, zero at influence radius.
         LForce := LToMouse.Normalize *
           (1 - LDistance / cMouseInfluenceRadius) * cMouseRepulsionStrength;
         LParticle.Velocity := LParticle.Velocity + LForce * ADeltaTime;
       end;
     end;
 
+    // Weak pull toward center keeps the field from drifting off-screen.
     LToCenter := FCenter - LParticle.Position;
     if LToCenter.Length > cMinVectorLength then
     begin
@@ -433,6 +475,7 @@ begin
         LToCenter.Normalize * cCenterPullStrength * ADeltaTime;
     end;
 
+    // Simple linear damping; then Euler integrate position.
     LParticle.Velocity := LParticle.Velocity * (1 - cVelocityDamping * ADeltaTime);
     LParticle.Position := LParticle.Position + LParticle.Velocity * ADeltaTime;
 
@@ -440,6 +483,7 @@ begin
     Dec(i);
   end;
 
+  // Occasional sparkle from a random orb (bounded by cMaxParticles).
   if Random < cOrbSpawnChance then
   begin
     LOrbIndex := Random(Length(FOrbs));

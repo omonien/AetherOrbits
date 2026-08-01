@@ -124,9 +124,10 @@
         </DCCReference>
         <DCCReference Include="Helios.Scene.pas"/>
         <DCCReference Include="Helios.Scene.Renderer.pas"/>
-        <DCCReference Include="..\AetherOrbits.GameLoop.pas"/>
-        <DCCReference Include="..\AetherOrbits.SystemInfo.pas"/>
-        <DCCReference Include="..\AetherOrbits.Stats.Hud.pas"/>
+        <DCCReference Include="..\FMXAnimation.GameLoop.pas"/>
+        <DCCReference Include="..\FMXAnimation.SystemInfo.pas"/>
+        <DCCReference Include="..\FMXAnimation.Stats.Hud.pas"/>
+        <DCCReference Include="..\FMXAnimation.DemoShell.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -1,11 +1,11 @@
 ﻿/// <summary>
-/// AetherOrbits.Stats.Hud
+/// FMXAnimation.Stats.Hud
 /// Formats and draws the demo stats overlay (Skia). Uses SystemInfo for data.
 /// </summary>
 ///
 /// <remarks>
 /// Presentation only. Adapts font size, line count, and bar height to surface
-/// width (phone-friendly). System diagnostics live in AetherOrbits.SystemInfo.
+/// width (phone-friendly). System diagnostics live in FMXAnimation.SystemInfo.
 /// </remarks>
 ///
 /// <copyright>
@@ -13,7 +13,7 @@
 /// Licensed under MIT
 /// </copyright>
 
-unit AetherOrbits.Stats.Hud;
+unit FMXAnimation.Stats.Hud;
 
 interface
 
@@ -25,7 +25,7 @@ uses
   System.Diagnostics,
   System.Math,
   System.Skia,
-  AetherOrbits.SystemInfo;
+  FMXAnimation.SystemInfo;
 
 /// <summary>
 /// Height of the stats bar for a given surface width (responsive).

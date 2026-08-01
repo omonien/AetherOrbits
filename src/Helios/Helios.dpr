@@ -24,9 +24,10 @@ uses
   Helios.Main.Form in 'Helios.Main.Form.pas' {FormHeliosMain},
   Helios.Scene in 'Helios.Scene.pas',
   Helios.Scene.Renderer in 'Helios.Scene.Renderer.pas',
-  AetherOrbits.GameLoop in '..\AetherOrbits.GameLoop.pas',
-  AetherOrbits.SystemInfo in '..\AetherOrbits.SystemInfo.pas',
-  AetherOrbits.Stats.Hud in '..\AetherOrbits.Stats.Hud.pas';
+  FMXAnimation.GameLoop in '..\FMXAnimation.GameLoop.pas',
+  FMXAnimation.SystemInfo in '..\FMXAnimation.SystemInfo.pas',
+  FMXAnimation.Stats.Hud in '..\FMXAnimation.Stats.Hud.pas',
+  FMXAnimation.DemoShell in '..\FMXAnimation.DemoShell.pas';
 
 {$R *.res}
 

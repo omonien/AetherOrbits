@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <Import Condition="Exists('$(BDS)\bin\CodeGear.Deployment.targets')" Project="$(BDS)\bin\CodeGear.Deployment.targets"/>
     <ProjectExtensions>
         <ProjectFileVersion>12</ProjectFileVersion>
@@ -11,7 +11,7 @@
     </PropertyGroup>
     <ItemGroup Condition="'$(Platform)'=='WinARM64EC'"/>
     <ItemGroup Condition="'$(Platform)'=='OSX64'">
-        <DeployFile Include="..\build\OSX64\Debug\AetherOrbits.dSYM" Condition="'$(Config)'=='Debug'">
+        <DeployFile Include="..\..\build\OSX64\Debug\AetherOrbits.dSYM" Condition="'$(Config)'=='Debug'">
             <RemoteDir>AetherOrbits.app\..\$(PROJECTNAME).app.dSYM\Contents\Resources\DWARF\</RemoteDir>
             <RemoteName>AetherOrbits</RemoteName>
             <DeployClass>ProjectOSXDebug</DeployClass>
@@ -20,7 +20,7 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="..\build\OSX64\Debug\AetherOrbits" Condition="'$(Config)'=='Debug'">
+        <DeployFile Include="..\..\build\OSX64\Debug\AetherOrbits" Condition="'$(Config)'=='Debug'">
             <RemoteDir>AetherOrbits.app\Contents\MacOS\</RemoteDir>
             <RemoteName>AetherOrbits</RemoteName>
             <DeployClass>ProjectOutput</DeployClass>
@@ -39,7 +39,7 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="..\build\OSX64\Debug\AetherOrbits.info.plist" Condition="'$(Config)'=='Debug'">
+        <DeployFile Include="..\..\build\OSX64\Debug\AetherOrbits.info.plist" Condition="'$(Config)'=='Debug'">
             <RemoteDir>AetherOrbits.app\Contents\</RemoteDir>
             <RemoteName>Info.plist</RemoteName>
             <DeployClass>ProjectOSXInfoPList</DeployClass>
@@ -48,7 +48,7 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="..\build\OSX64\Debug\AetherOrbits.entitlements" Condition="'$(Config)'=='Debug'">
+        <DeployFile Include="..\..\build\OSX64\Debug\AetherOrbits.entitlements" Condition="'$(Config)'=='Debug'">
             <RemoteDir>AetherOrbits.app\..\</RemoteDir>
             <RemoteName>AetherOrbits.entitlements</RemoteName>
             <DeployClass>ProjectOSXEntitlements</DeployClass>

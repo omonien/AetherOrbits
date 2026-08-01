@@ -4,9 +4,32 @@
 /// </summary>
 ///
 /// <remarks>
-/// Pure state + fixed-timestep update. No UI, no Skia. World space is a soft 3D
-/// system (X right, Y up, Z depth) with circular orbits and slight inclination.
-/// The renderer projects via a simple perspective camera.
+/// <para>
+/// <b>Role in the stack:</b> pure world state + fixed-timestep update. No FMX
+/// forms, no Skia draw calls. The form calls <c>Update</c> from
+/// <c>TGameLoop.OnUpdate</c>; <c>Helios.Scene.Renderer</c> projects and paints
+/// on <c>OnDraw</c>. Hit-testing reuses the same projection as the renderer.
+/// </para>
+/// <para>
+/// <b>World space:</b> soft 3D — X right, Y up, Z depth. Orbits are circles in
+/// the XZ plane with a small inclination around X so rings read as ellipses
+/// when projected. Scale is artistic (readable layout), not true AU/radii.
+/// </para>
+/// <para>
+/// <b>Camera:</b> look-at target + distance, smoothly lerped toward goals.
+/// Overview orbits the origin gently (idle yaw). Focus tracks a body while
+/// orbits advance. Camera eases even while simulation is paused.
+/// </para>
+/// <para>
+/// <b>Trails:</b> ring buffers of world samples per planet (not the Sun).
+/// Sampled on a fixed interval in simulation time so high sim-speed still
+/// fills trails without flooding every physics step.
+/// </para>
+/// <para>
+/// <b>Sim speed / pause:</b> <c>Update</c> multiplies dt by <c>SimSpeed</c>
+/// when not paused. Prefer changing speed here rather than GameLoop
+/// FixedTimeStep (keeps the frame clock independent of “story” time).
+/// </para>
 /// </remarks>
 ///
 /// <copyright>
@@ -135,8 +158,14 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    /// <summary>Records surface size (used by the form for layout; projection uses ADest).</summary>
     procedure SetViewport(const AWidth, AHeight: Single);
+    /// <summary>First-time setup: bodies, trails, overview camera, default speed.</summary>
     procedure Initialize(const AWidth, AHeight: Single);
+    /// <summary>
+    /// Advances simulation (orbits, trails) and camera ease.
+    /// Call from game-loop OnUpdate with the fixed timestep.
+    /// </summary>
     procedure Update(const ADeltaTime: Double);
 
     /// <summary>Toggle pause (simulation clock freezes; camera still eases).</summary>
@@ -432,6 +461,8 @@ begin
 end;
 
 procedure THeliosScene.UpdateBodyPositions;
+// Recompute world positions from Angle / OrbitRadius / Inclination.
+// Sun (OrbitRadius = 0) stays at the origin.
 var
   i: Integer;
   LCosA, LSinA, LCosI, LSinI: Single;
@@ -448,7 +479,7 @@ begin
     LSinA := Sin(FBodies[i].Angle);
     LCosI := Cos(FBodies[i].Inclination);
     LSinI := Sin(FBodies[i].Inclination);
-    // Orbit in XZ, tilted by inclination around X.
+    // Circle in XZ, then tilt around X → LY = Z * sin(i), Z' = Z * cos(i).
     LX := LCosA * FBodies[i].OrbitRadius;
     LZ := LSinA * FBodies[i].OrbitRadius;
     LY := LZ * LSinI;
@@ -490,6 +521,8 @@ begin
 end;
 
 procedure THeliosScene.Update(const ADeltaTime: Double);
+// Fixed-timestep entry from TGameLoop.OnUpdate.
+// Camera always eases; orbit integration respects Pause and SimSpeed.
 var
   LSimDt: Double;
   i: Integer;
@@ -499,7 +532,8 @@ begin
     Exit;
   end;
 
-  // Camera eases even while paused so focus transitions stay smooth.
+  // Keep focus goal locked to the body (or overview goal from FocusOverview).
+  // Done before the pause early-out so the camera can still settle while frozen.
   if (FFocusedIndex >= 0) and (FFocusedIndex < Length(FBodies)) then
   begin
     FCamera.SetFocus(FBodies[FFocusedIndex].Position, FBodies[FFocusedIndex].Size);
@@ -511,6 +545,7 @@ begin
     Exit;
   end;
 
+  // Story time ≠ wall/frame clock: scale only the simulation delta.
   LSimDt := ADeltaTime * FSimSpeed;
   FTime := FTime + LSimDt;
 
@@ -573,6 +608,9 @@ function THeliosScene.ProjectPoint(
   const ADest: TRectF;
   out AScreen: TPointF;
   out ADepth: Single): Boolean;
+// Simple pinhole projection shared by the renderer and hit-testing.
+// Camera basis: forward (to target), right (forward × world-up), up (right × forward).
+// Returns False when the point is behind / too close to the near plane (LCamZ ≤ 1).
 var
   LEye: TVec3;
   LForward: TVec3;
@@ -590,7 +628,7 @@ begin
     LForward.Y * LWorldUp.Z - LForward.Z * LWorldUp.Y,
     LForward.Z * LWorldUp.X - LForward.X * LWorldUp.Z,
     LForward.X * LWorldUp.Y - LForward.Y * LWorldUp.X).Normalize;
-  // Re-orthogonalize up
+  // Re-orthogonalize up so the basis stays right-handed after cross products.
   LUp := TVec3.Create(
     LRight.Y * LForward.Z - LRight.Z * LForward.Y,
     LRight.Z * LForward.X - LRight.X * LForward.Z,
@@ -609,6 +647,7 @@ begin
     Exit;
   end;
 
+  // Uniform scale (no aspect stretch) — keeps planets circular on any window shape.
   LScale := cPerspectiveFocal / LCamZ;
   AScreen := TPointF.Create(
     ADest.CenterPoint.X + LCamX * LScale,

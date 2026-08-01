@@ -24,11 +24,12 @@ uses
   FMX.Types,
   FMX.Skia,
   AetherOrbits.Main.Form in 'AetherOrbits.Main.Form.pas' {FormMain},
-  AetherOrbits.GameLoop in 'AetherOrbits.GameLoop.pas',
   AetherOrbits.Scene in 'AetherOrbits.Scene.pas',
   AetherOrbits.Scene.Renderer in 'AetherOrbits.Scene.Renderer.pas',
-  AetherOrbits.SystemInfo in 'AetherOrbits.SystemInfo.pas',
-  AetherOrbits.Stats.Hud in 'AetherOrbits.Stats.Hud.pas';
+  FMXAnimation.GameLoop in '..\FMXAnimation.GameLoop.pas',
+  FMXAnimation.SystemInfo in '..\FMXAnimation.SystemInfo.pas',
+  FMXAnimation.Stats.Hud in '..\FMXAnimation.Stats.Hud.pas',
+  FMXAnimation.DemoShell in '..\FMXAnimation.DemoShell.pas';
 
 {$R *.res}
 

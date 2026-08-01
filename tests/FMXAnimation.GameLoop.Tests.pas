@@ -1,5 +1,5 @@
 ﻿/// <summary>
-/// AetherOrbits.GameLoop.Tests
+/// FMXAnimation.GameLoop.Tests
 /// DUnitX tests for the fixed-timestep game loop.
 /// </summary>
 ///
@@ -8,7 +8,7 @@
 /// Licensed under MIT
 /// </copyright>
 
-unit AetherOrbits.GameLoop.Tests;
+unit FMXAnimation.GameLoop.Tests;
 
 interface
 
@@ -22,8 +22,8 @@ uses
   // Test
   DUnitX.TestFramework,
   // Own
-  AetherOrbits.GameLoop,
-  AetherOrbits.SystemInfo;
+  FMXAnimation.GameLoop,
+  FMXAnimation.SystemInfo;
 
 type
   /// <summary>

@@ -62,12 +62,13 @@
         <AUP_READ_EXTERNAL_STORAGE>true</AUP_READ_EXTERNAL_STORAGE>
         <AUP_READ_PHONE_STATE>true</AUP_READ_PHONE_STATE>
         <AUP_WRITE_EXTERNAL_STORAGE>true</AUP_WRITE_EXTERNAL_STORAGE>
-        <DCC_DcpOutput>..\build\$(Platform)\$(Config)\dcu</DCC_DcpOutput>
-        <DCC_DcuOutput>..\build\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
+        <DCC_DcpOutput>..\..\build\$(Platform)\$(Config)\dcu</DCC_DcpOutput>
+        <DCC_DcuOutput>..\..\build\$(Platform)\$(Config)\dcu</DCC_DcuOutput>
         <DCC_Define>SKIA;$(DCC_Define)</DCC_Define>
-        <DCC_ExeOutput>..\build\$(Platform)\$(Config)</DCC_ExeOutput>
+        <DCC_ExeOutput>..\..\build\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_ImageBase>00400000</DCC_ImageBase>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_UnitSearchPath>..;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <VerInfo_Build>0</VerInfo_Build>
@@ -121,11 +122,12 @@
             <Form>FormMain</Form>
             <FormType>fmx</FormType>
         </DCCReference>
-        <DCCReference Include="AetherOrbits.GameLoop.pas"/>
         <DCCReference Include="AetherOrbits.Scene.pas"/>
         <DCCReference Include="AetherOrbits.Scene.Renderer.pas"/>
-        <DCCReference Include="AetherOrbits.SystemInfo.pas"/>
-        <DCCReference Include="AetherOrbits.Stats.Hud.pas"/>
+        <DCCReference Include="..\FMXAnimation.GameLoop.pas"/>
+        <DCCReference Include="..\FMXAnimation.SystemInfo.pas"/>
+        <DCCReference Include="..\FMXAnimation.Stats.Hud.pas"/>
+        <DCCReference Include="..\FMXAnimation.DemoShell.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -187,18 +189,18 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\build\OSX64\Release\AetherOrbits" Configuration="Release" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\build\OSX64\Release\AetherOrbits" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="OSX64">
                         <RemoteName>AetherOrbits</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\build\OSX64\Release\AetherOrbits.entitlements" Configuration="Release" Class="ProjectOSXEntitlements">
+                <DeployFile LocalName="..\..\build\OSX64\Release\AetherOrbits.entitlements" Configuration="Release" Class="ProjectOSXEntitlements">
                     <Platform Name="OSX64">
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\build\OSX64\Release\AetherOrbits.info.plist" Configuration="Release" Class="ProjectOSXInfoPList">
+                <DeployFile LocalName="..\..\build\OSX64\Release\AetherOrbits.info.plist" Configuration="Release" Class="ProjectOSXInfoPList">
                     <Platform Name="OSX64">
                         <RemoteName>Info.plist</RemoteName>
                         <Overwrite>true</Overwrite>

@@ -4,8 +4,9 @@
 /// </summary>
 ///
 /// <remarks>
-/// Wires TGameLoop to THeliosScene and a TSkPaintBox. Reuses AetherOrbits
-/// GameLoop, SystemInfo, and Stats.Hud. Dark chrome matches Aether Orbits.
+/// Form handling only: wires toolbar, TGameLoop, THeliosScene, and TSkPaintBox.
+/// Shared surface/chrome helpers live in FMXAnimation.DemoShell; simulation and
+/// drawing stay in Scene / Scene.Renderer.
 /// </remarks>
 ///
 /// <copyright>
@@ -33,15 +34,16 @@ uses
   FMX.Graphics,
   System.Skia,
   FMX.Skia,
-  AetherOrbits.GameLoop,
-  AetherOrbits.Stats.Hud,
-  AetherOrbits.SystemInfo,
+  FMXAnimation.GameLoop,
+  FMXAnimation.DemoShell,
+  FMXAnimation.Stats.Hud,
+  FMXAnimation.SystemInfo,
   Helios.Scene,
   Helios.Scene.Renderer;
 
 type
   /// <summary>
-  /// Helios main window: game loop + solar system scene + Skia paint box.
+  /// Helios main window: UI shell for game loop + solar system + Skia surface.
   /// </summary>
   TFormHeliosMain = class(TForm)
     LayoutToolbar: TLayout;
@@ -91,13 +93,9 @@ type
     FApplyingPreferred: Boolean;
 
     procedure CreateUi;
-    procedure StyleSegment(const ARect: TRectangle; const ALabel: TLabel;
-      const ASelected: Boolean);
     procedure SyncPreferredSegmentsFromGlobal;
     procedure SyncSpeedSegments;
     procedure SyncToggleButtons;
-    function GetSceneViewportHeight: Single;
-    function GetSceneDrawRect: TRectF;
     procedure SyncViewportFromPaintBox;
     procedure EnsureSceneInitialized;
     procedure DoGameUpdate(const ADeltaTime: Double);
@@ -110,7 +108,7 @@ type
     procedure DoPaintBoxMouseDown(ASender: TObject; AButton: TMouseButton;
       AShift: TShiftState; AX, AY: Single);
     procedure UpdateStatsFooter;
-    procedure ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
+    procedure ApplyPreferredFpsFromUi(const AFps: Integer);
   end;
 
 var
@@ -120,38 +118,7 @@ implementation
 
 {$R *.fmx}
 
-const
-  cBarBg = $FF0B1220;
-  cBarLine = $FF1E2A3C;
-  cSegIdleFill = $FF151C2A;
-  cSegIdleStroke = $FF2A3A50;
-  cSegIdleText = $FF9AABC4;
-  cSegSelFill = $FF2563A8;
-  cSegSelStroke = $FF3B82C4;
-  cSegSelText = $FFE8EEF8;
-  cLabelMuted = $FF8B9BB4;
-  cHintMuted = $FF5C6B82;
-
 { TFormHeliosMain }
-
-procedure TFormHeliosMain.StyleSegment(
-  const ARect: TRectangle;
-  const ALabel: TLabel;
-  const ASelected: Boolean);
-begin
-  if ASelected then
-  begin
-    ARect.Fill.Color := cSegSelFill;
-    ARect.Stroke.Color := cSegSelStroke;
-    ALabel.TextSettings.FontColor := cSegSelText;
-  end
-  else
-  begin
-    ARect.Fill.Color := cSegIdleFill;
-    ARect.Stroke.Color := cSegIdleStroke;
-    ALabel.TextSettings.FontColor := cSegIdleText;
-  end;
-end;
 
 procedure TFormHeliosMain.SyncPreferredSegmentsFromGlobal;
 var
@@ -165,9 +132,9 @@ begin
 
   FApplyingPreferred := True;
   try
-    StyleSegment(RectSeg30, LabelSeg30, LFps = 30);
-    StyleSegment(RectSeg60, LabelSeg60, LFps = 60);
-    StyleSegment(RectSeg120, LabelSeg120, LFps = 120);
+    StyleSegmentChip(RectSeg30, LabelSeg30, LFps = 30);
+    StyleSegmentChip(RectSeg60, LabelSeg60, LFps = 60);
+    StyleSegmentChip(RectSeg120, LabelSeg120, LFps = 120);
   finally
     FApplyingPreferred := False;
   end;
@@ -182,10 +149,10 @@ begin
     Exit;
   end;
   LSpeed := FScene.SimSpeed;
-  StyleSegment(RectSpeed025, LabelSpeed025, Abs(LSpeed - 0.25) < 0.01);
-  StyleSegment(RectSpeed1, LabelSpeed1, Abs(LSpeed - 1.0) < 0.01);
-  StyleSegment(RectSpeed5, LabelSpeed5, Abs(LSpeed - 5.0) < 0.01);
-  StyleSegment(RectSpeed20, LabelSpeed20, Abs(LSpeed - 20.0) < 0.01);
+  StyleSegmentChip(RectSpeed025, LabelSpeed025, Abs(LSpeed - 0.25) < 0.01);
+  StyleSegmentChip(RectSpeed1, LabelSpeed1, Abs(LSpeed - 1.0) < 0.01);
+  StyleSegmentChip(RectSpeed5, LabelSpeed5, Abs(LSpeed - 5.0) < 0.01);
+  StyleSegmentChip(RectSpeed20, LabelSpeed20, Abs(LSpeed - 20.0) < 0.01);
 end;
 
 procedure TFormHeliosMain.SyncToggleButtons;
@@ -194,7 +161,7 @@ begin
   begin
     Exit;
   end;
-  StyleSegment(RectPause, LabelPause, FScene.Paused);
+  StyleSegmentChip(RectPause, LabelPause, FScene.Paused);
   if FScene.Paused then
   begin
     LabelPause.Text := 'Resume';
@@ -203,42 +170,31 @@ begin
   begin
     LabelPause.Text := 'Pause';
   end;
-  StyleSegment(RectTrails, LabelTrails, FScene.ShowTrails);
+  StyleSegmentChip(RectTrails, LabelTrails, FScene.ShowTrails);
 end;
 
 procedure TFormHeliosMain.CreateUi;
 begin
-  FPaintBox := TSkPaintBox.Create(Self);
-  FPaintBox.Parent := LayoutScene;
-  FPaintBox.Align := TAlignLayout.Client;
-  FPaintBox.HitTest := True;
-  FPaintBox.CanFocus := False;
+  FPaintBox := CreateClientPaintBox(Self, LayoutScene);
   FPaintBox.OnDraw := DoPaintBoxDraw;
   FPaintBox.OnMouseDown := DoPaintBoxMouseDown;
-  LayoutScene.HitTest := False;
 
-  RectToolbarBg.Fill.Color := cBarBg;
-  RectToolbarBottomLine.Fill.Color := cBarLine;
+  RectToolbarBg.Fill.Color := cDemoBarBg;
+  RectToolbarBottomLine.Fill.Color := cDemoBarLine;
+  StyleDemoLabel(LabelSpeed, cDemoLabelMuted);
+  StyleDemoLabel(LabelPreferred, cDemoLabelMuted);
+  StyleDemoLabel(LabelHint, cDemoHintMuted);
+  StyleDemoLabel(LabelSpeed025, cDemoSegIdleText);
+  StyleDemoLabel(LabelSpeed1, cDemoSegIdleText);
+  StyleDemoLabel(LabelSpeed5, cDemoSegIdleText);
+  StyleDemoLabel(LabelSpeed20, cDemoSegIdleText);
+  StyleDemoLabel(LabelPause, cDemoSegIdleText);
+  StyleDemoLabel(LabelTrails, cDemoSegIdleText);
+  StyleDemoLabel(LabelOverview, cDemoSegIdleText);
+  StyleDemoLabel(LabelSeg30, cDemoSegIdleText);
+  StyleDemoLabel(LabelSeg60, cDemoSegIdleText);
+  StyleDemoLabel(LabelSeg120, cDemoSegIdleText);
 
-  LabelSpeed.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSpeed.TextSettings.FontColor := cLabelMuted;
-  LabelPreferred.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelPreferred.TextSettings.FontColor := cLabelMuted;
-  LabelHint.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelHint.TextSettings.FontColor := cHintMuted;
-
-  LabelSpeed025.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSpeed1.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSpeed5.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSpeed20.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelPause.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelTrails.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelOverview.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSeg30.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSeg60.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-  LabelSeg120.StyledSettings := [TStyledSetting.Family, TStyledSetting.Style];
-
-  // Gaps between chip groups so the bar does not pack flush.
   RectSpeed1.Margins.Left := 6;
   RectSpeed5.Margins.Left := 6;
   RectSpeed20.Margins.Left := 6;
@@ -257,23 +213,15 @@ begin
   SyncToggleButtons;
 end;
 
-function TFormHeliosMain.GetSceneViewportHeight: Single;
-begin
-  Result := Max(1, FPaintBox.Height - GetStatsHudHeight(FPaintBox.Width));
-end;
-
-function TFormHeliosMain.GetSceneDrawRect: TRectF;
-begin
-  Result := TRectF.Create(0, 0, Max(1, FPaintBox.Width), GetSceneViewportHeight);
-end;
-
 procedure TFormHeliosMain.SyncViewportFromPaintBox;
 begin
   if not Assigned(FScene) or not Assigned(FPaintBox) then
   begin
     Exit;
   end;
-  FScene.SetViewport(Max(1, FPaintBox.Width), GetSceneViewportHeight);
+  FScene.SetViewport(
+    Max(1, FPaintBox.Width),
+    GetSceneViewportHeight(FPaintBox.Width, FPaintBox.Height));
 end;
 
 procedure TFormHeliosMain.EnsureSceneInitialized;
@@ -284,33 +232,16 @@ begin
   end
   else
   begin
-    FScene.Initialize(Max(1, FPaintBox.Width), GetSceneViewportHeight);
+    FScene.Initialize(
+      Max(1, FPaintBox.Width),
+      GetSceneViewportHeight(FPaintBox.Width, FPaintBox.Height));
   end;
 end;
 
-procedure TFormHeliosMain.ApplyPreferredFps(const AFps: Integer; const ARestartLoop: Boolean);
-var
-  LWasRunning: Boolean;
+procedure TFormHeliosMain.ApplyPreferredFpsFromUi(const AFps: Integer);
 begin
-  if GetPreferredFramesPerSecond = AFps then
-  begin
-    SyncPreferredSegmentsFromGlobal;
-    Exit;
-  end;
-
-  SetPreferredFramesPerSecond(AFps);
+  ApplyPreferredFps(AFps, FGameLoop, True, Visible);
   SyncPreferredSegmentsFromGlobal;
-
-  if ARestartLoop and Assigned(FGameLoop) then
-  begin
-    LWasRunning := FGameLoop.Running;
-    FGameLoop.StopLoop;
-    if LWasRunning or Visible then
-    begin
-      FGameLoop.StartLoop;
-    end;
-  end;
-
   UpdateStatsFooter;
 end;
 
@@ -330,7 +261,7 @@ begin
   else
     LFps := 60;
 
-  ApplyPreferredFps(LFps, True);
+  ApplyPreferredFpsFromUi(LFps);
 end;
 
 procedure TFormHeliosMain.SpeedSegClick(ASender: TObject);
@@ -447,8 +378,7 @@ begin
   begin
     Exit;
   end;
-  LDest := GetSceneDrawRect;
-  // Clicks in the stats strip are ignored.
+  LDest := GetSceneDrawRect(FPaintBox.Width, FPaintBox.Height);
   if AY > LDest.Bottom then
   begin
     Exit;
@@ -490,7 +420,6 @@ begin
     Exit;
   end;
 
-  // Encode sim speed as an integer percentage of 1× (25 / 100 / 500 / 2000).
   LSpeedDisplay := Round(FScene.SimSpeed * 100);
   if FScene.Paused then
   begin
@@ -511,12 +440,8 @@ procedure TFormHeliosMain.DoPaintBoxDraw(
   const ACanvas: ISkCanvas;
   const ADest: TRectF;
   const AOpacity: Single);
-var
-  LSceneDest: TRectF;
 begin
-  LSceneDest := ADest;
-  LSceneDest.Bottom := Max(ADest.Top + 1, ADest.Bottom - GetStatsHudHeight(ADest.Width));
-  THeliosSceneRenderer.Draw(FScene, ACanvas, LSceneDest);
+  THeliosSceneRenderer.Draw(FScene, ACanvas, GetSceneDestInPaintBox(ADest));
   TStatsHudPainter.Draw(ACanvas, ADest, FStatsHud.Text);
 end;
 

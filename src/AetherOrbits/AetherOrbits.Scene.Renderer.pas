@@ -4,14 +4,26 @@
 /// </summary>
 ///
 /// <remarks>
-/// Separation of concerns: reads scene state and paints into an ISkCanvas.
-/// Safe to call from a paint-box OnDraw handler.
-///
-/// Skia is used here as an <b>open rendering API with efficient backends</b>
-/// (raster / GPU paths under FMX), not as a game-loop black box. Frame timing
-/// stays in AetherOrbits.GameLoop (ProcessAnimation / Display Link); this unit
-/// only issues explicit draw calls when the UI asks for a repaint.
-/// Orbit positions come from TAetherScene.GetOrbWorldPosition (single model).
+/// <para>
+/// <b>Role:</b> read-only view of <c>TAetherScene</c>. Call from a paint-box
+/// <c>OnDraw</c> after the game loop has advanced the model. Never mutates
+/// scene state and never owns the frame clock.
+/// </para>
+/// <para>
+/// <b>Skia:</b> explicit canvas API with efficient backends (raster / GPU under
+/// FMX). It is not a game engine — timing stays in
+/// <c>FMXAnimation.GameLoop</c> (Display Link / <c>ProcessAnimation</c>).
+/// </para>
+/// <para>
+/// <b>Contract with the model:</b> orb screen positions come only from
+/// <c>TAetherScene.GetOrbWorldPosition</c>; particles from the dense prefix
+/// <c>Particles[0..ParticleCount-1]</c>. ADest is the scene rect above the
+/// stats HUD (see <c>FMXAnimation.DemoShell.GetSceneDestInPaintBox</c>).
+/// </para>
+/// <para>
+/// Draw order: background → central core → orbs (glow + body + highlight) →
+/// particles (alpha by remaining life).
+/// </para>
 /// </remarks>
 ///
 /// <copyright>
@@ -88,7 +100,7 @@ begin
 
   LCenter := AScene.Center;
 
-  // Background
+  // --- Background: deep radial vignette (fills ADest) --------------------------
   LPaint := TSkPaint.Create;
   LPaint.Shader := TSkShader.MakeGradientRadial(
     ADest.CenterPoint,
@@ -96,7 +108,8 @@ begin
     [$FF070B14, $FF0F1629, $FF1A243F]);
   ACanvas.DrawPaint(LPaint);
 
-  // Central core
+  // --- Central core: soft stacked discs + radial highlight ---------------------
+  // Pulse uses scene Time so it stays in sync with the simulation clock.
   LCorePulse := 1 + cCorePulseAmplitude * Sin(AScene.Time * cCorePulseFrequency);
   LPaint := TSkPaint.Create;
   LPaint.AntiAlias := True;
@@ -113,7 +126,8 @@ begin
     [$FFFFFFFF, $FF66B3FF, $FF1A6BFF, $00000000]);
   ACanvas.DrawCircle(LCenter.X, LCenter.Y, cCoreInnerRadius * LCorePulse, LPaint);
 
-  // Orbs — world position owned by the scene model
+  // --- Orbs: outer glow → mid glow → body → specular highlight -----------------
+  // World position is owned by the model (ellipse); Size already includes pulse.
   for var i := 0 to AScene.OrbCount - 1 do
   begin
     LOrb := AScene.Orbs[i];
@@ -140,6 +154,7 @@ begin
     LPaint.Color := LOrb.Color;
     ACanvas.DrawCircle(LOrbPos.X, LOrbPos.Y, LOrb.Size, LPaint);
 
+    // Cheap “specular” disc offset toward top-left (no lighting model).
     LPaint.Color := TAlphaColorF.Create(1, 1, 1, cHighlightAlpha).ToAlphaColor;
     ACanvas.DrawCircle(
       LOrbPos.X - LOrb.Size * cHighlightOffset,
@@ -148,7 +163,8 @@ begin
       LPaint);
   end;
 
-  // Particles — one array ref, iterate dense prefix only
+  // --- Particles: alpha by remaining life (quadratic fade feels softer) --------
+  // Snapshot the array ref once; only [0..ParticleCount-1] are live.
   LParticles := AScene.Particles;
   LCount := AScene.ParticleCount;
   LPaint := TSkPaint.Create;
